@@ -17,19 +17,25 @@ STAGE="${TARGET}.new"
 ROLLBACK="${TARGET}.rollback"
 
 BIN_SRC="${SOURCE}/pgcr-mirror-display"
+PROBE_SRC="${SOURCE}/pgcr-screen-probe"
 START_SRC="${SOURCE}/scripts/start_pgcr_mirror.sh"
 LOG_SRC="${SOURCE}/scripts/bounded_log.sh"
 CFG_SRC="${SOURCE}/config.local"
 
 [ -d /mnt/app/root/mmi-mirror ] || {
     echo "ERROR: upstream MMI Mirror V2.2 runtime is not installed."
-    echo "PGCR v0.3 uses the existing Java ctx80 controller and must be installed after upstream V2.2."
+    echo "PGCR v0.4 uses the existing Java ctx80 controller and must be installed after upstream V2.2."
     exit 1
 }
 
 [ -s "$BIN_SRC" ] || {
     echo "ERROR: missing compiled PGCR binary:"
     echo "$BIN_SRC"
+    exit 1
+}
+[ -s "$PROBE_SRC" ] || {
+    echo "ERROR: missing compiled PGCR v0.4 probe binary:"
+    echo "$PROBE_SRC"
     exit 1
 }
 [ -f "$START_SRC" ] || { echo "ERROR: missing PGCR runtime launcher"; exit 1; }
@@ -47,6 +53,8 @@ mkdir -p "$STAGE/scripts" || exit 1
 
 cp "$BIN_SRC" "$STAGE/pgcr-mirror-display" || exit 1
 chmod 755 "$STAGE/pgcr-mirror-display" || exit 1
+cp "$PROBE_SRC" "$STAGE/pgcr-screen-probe" || exit 1
+chmod 755 "$STAGE/pgcr-screen-probe" || exit 1
 cp "$START_SRC" "$STAGE/scripts/start_pgcr_mirror.sh" || exit 1
 chmod 755 "$STAGE/scripts/start_pgcr_mirror.sh" || exit 1
 cp "$LOG_SRC" "$STAGE/scripts/bounded_log.sh" || exit 1
@@ -85,7 +93,7 @@ rm -rf "$ROLLBACK" 2>/dev/null || true
 sync 2>/dev/null || true
 mount -ur /mnt/app 2>/dev/null || true
 
-echo "PGCR Mirror v0.3 installed."
+echo "PGCR Mirror v0.4 installed."
 echo "Upstream MMI Mirror files were not modified."
 echo "Use Green Menu -> PGCR Display Lab -> Start PGCR WideMap."
 exit 0
