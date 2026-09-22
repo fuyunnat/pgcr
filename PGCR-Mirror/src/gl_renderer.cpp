@@ -131,7 +131,7 @@ bool GlRenderer::init(int output_width, int output_height) {
     return true;
 }
 
-bool GlRenderer::ensure_upload_buffer(size_t bytes) {
+bool GlRenderer::ensure_upload_buffer(std::size_t bytes) {
     if (upload_buffer_ && upload_buffer_bytes_ >= bytes) return true;
     unsigned char *next = (unsigned char *)realloc(upload_buffer_, bytes);
     if (!next) return false;
