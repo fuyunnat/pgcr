@@ -1,0 +1,65 @@
+name: Publish PGCR v0.3 Direct Download
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/publish-pgcr-v03-download.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Checkout upstream complete SD base
+        uses: actions/checkout@v4
+        with:
+          repository: Lanye-z/MHI2Q-CarPlay-RGI-MMI-Mirror
+          ref: c7446061acc721968cf0840f534133f195d52ad5
+          path: upstream
+          fetch-depth: 1
+
+      - name: Download verified PGCR v0.3 overlay
+        uses: actions/download-artifact@v4
+        with:
+          name: PGCR-P0915-Amap-Crop-v0.3
+          path: pgcr-artifact
+          github-token: ${{ github.token }}
+          repository: fuyunnat/pgcr
+          run-id: 35753016990
+
+      - name: Assemble and publish ZIP
+        run: |
+          set -e
+          rm -rf /tmp/pgcr-dist
+          mkdir -p /tmp/pgcr-dist downloads
+          cp -a upstream/. /tmp/pgcr-dist/
+          rm -rf /tmp/pgcr-dist/.git
+          unzip -o pgcr-artifact/PGCR-P0915-Amap-Crop-v0.3.zip -d /tmp/pgcr-dist
+
+          test -f /tmp/pgcr-dist/metainfo2.txt
+          test -f /tmp/pgcr-dist/Toolbox/GEM/mqb-main.esd
+          test -f /tmp/pgcr-dist/Toolbox/GEM/mqb-mmiMirror.esd
+          test -f /tmp/pgcr-dist/Toolbox/GEM/mqb-pgcrDisplay.esd
+          test -x /tmp/pgcr-dist/Toolbox/apps/pgcr/pgcr-mirror-display
+
+          rm -f downloads/PGCR-P0915-FULL-SD-v0.3.zip
+          (cd /tmp/pgcr-dist && zip -r -9 "$GITHUB_WORKSPACE/downloads/PGCR-P0915-FULL-SD-v0.3.zip" .)
+          sha256sum downloads/PGCR-P0915-FULL-SD-v0.3.zip > downloads/PGCR-P0915-FULL-SD-v0.3.zip.sha256
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add downloads/PGCR-P0915-FULL-SD-v0.3.zip downloads/PGCR-P0915-FULL-SD-v0.3.zip.sha256
+          git commit -m "release: publish PGCR v0.3 full SD direct download"
+          git push origin main
