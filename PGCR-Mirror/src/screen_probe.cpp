@@ -5,15 +5,20 @@
 #include <string.h>
 
 /* QNX Screen 6.5/6.6 property IDs. Read-only probe: no set/create-window calls. */
+#define SCREEN_PROPERTY_BUFFER_SIZE 5
+#define SCREEN_PROPERTY_DISPLAY 11
 #define SCREEN_PROPERTY_FORMAT 14
+#define SCREEN_PROPERTY_GLOBAL_ALPHA 16
 #define SCREEN_PROPERTY_GROUP 18
 #define SCREEN_PROPERTY_ID_STRING 20
 #define SCREEN_PROPERTY_NAME 30
 #define SCREEN_PROPERTY_OWNER_PID 31
 #define SCREEN_PROPERTY_POSITION 35
+#define SCREEN_PROPERTY_ROTATION 38
 #define SCREEN_PROPERTY_SIZE 40
 #define SCREEN_PROPERTY_SOURCE_POSITION 41
 #define SCREEN_PROPERTY_SOURCE_SIZE 42
+#define SCREEN_PROPERTY_SWAP_INTERVAL 45
 #define SCREEN_PROPERTY_TRANSPARENCY 46
 #define SCREEN_PROPERTY_TYPE 47
 #define SCREEN_PROPERTY_USAGE 48
@@ -33,6 +38,7 @@ typedef int (*destroy_context_fn)(void *);
 typedef int (*get_context_iv_fn)(void *, int, int *);
 typedef int (*get_context_pv_fn)(void *, int, void **);
 typedef int (*get_display_iv_fn)(void *, int, int *);
+typedef int (*get_display_cv_fn)(void *, int, int, char *);
 typedef int (*get_window_iv_fn)(void *, int, int *);
 typedef int (*get_window_cv_fn)(void *, int, int, char *);
 typedef int (*get_window_pv_fn)(void *, int, void **);
@@ -58,6 +64,27 @@ static int display_index(void *d, void **list, int count) {
     for (int i=0;i<count;++i) if (list[i]==d) return i;
     return -1;
 }
+static bool contains_ci(const char *s,const char *needle){
+    if(!s||!needle||!*needle)return false;
+    size_t n=strlen(needle);
+    for(const char *p=s;*p;++p){
+        size_t i=0;
+        for(;i<n&&p[i];++i){
+            char a=p[i],b=needle[i];
+            if(a>='A'&&a<='Z')a=(char)(a-'A'+'a');
+            if(b>='A'&&b<='Z')b=(char)(b-'A'+'a');
+            if(a!=b)break;
+        }
+        if(i==n)return true;
+    }
+    return false;
+}
+static bool carplay_hint(const char *id,const char *name,const char *group){
+    static const char *terms[]={"carplay","apple","projection","smartphone","phone","iap","video","mirrorlink",0};
+    for(int i=0;terms[i];++i)
+        if(contains_ci(id,terms[i])||contains_ci(name,terms[i])||contains_ci(group,terms[i]))return true;
+    return false;
+}
 
 int main(void) {
     void *lib=dlopen("libscreen.so.1",RTLD_LAZY);
@@ -69,6 +96,7 @@ int main(void) {
     get_context_iv_fn ctx_iv=(get_context_iv_fn)dlsym(lib,"screen_get_context_property_iv");
     get_context_pv_fn ctx_pv=(get_context_pv_fn)dlsym(lib,"screen_get_context_property_pv");
     get_display_iv_fn disp_iv=(get_display_iv_fn)dlsym(lib,"screen_get_display_property_iv");
+    get_display_cv_fn disp_cv=(get_display_cv_fn)dlsym(lib,"screen_get_display_property_cv");
     get_window_iv_fn win_iv=(get_window_iv_fn)dlsym(lib,"screen_get_window_property_iv");
     get_window_cv_fn win_cv=(get_window_cv_fn)dlsym(lib,"screen_get_window_property_cv");
     get_window_pv_fn win_pv=(get_window_pv_fn)dlsym(lib,"screen_get_window_property_pv");
@@ -94,13 +122,18 @@ int main(void) {
     void *displays[32]; memset(displays,0,sizeof(displays));
     if(dc>0 && ctx_pv(ctx,SCREEN_PROPERTY_DISPLAYS,displays)!=0) dc=0;
 
+    printf("===== PGCR v0.4 CarPlay Source Probe =====\n");
+    printf("mode=READ_ONLY\n");
+    printf("NOTE=no existing vehicle window is created/moved/resized/destroyed\n");
     printf("PGCR_SCREEN_PROBE_V04\n");
     printf("context_type=%s\n",ctx_type==SCREEN_DISPLAY_MANAGER_CONTEXT?"DISPLAY_MANAGER":"WINDOW_MANAGER");
     printf("display_count=%d\n",dc);
     for(int i=0;i<dc;++i){
         int sz[2]={-1,-1};
         if(disp_iv(displays[i],SCREEN_PROPERTY_SIZE,sz)!=0){sz[0]=-1;sz[1]=-1;}
-        printf("DISPLAY index=%d size=%dx%d handle=%p\n",i,sz[0],sz[1],displays[i]);
+        char did[128]; memset(did,0,sizeof(did));
+        if(!disp_cv || disp_cv(displays[i],SCREEN_PROPERTY_ID_STRING,(int)sizeof(did)-1,did)!=0) strcpy(did,"?");
+        printf("DISPLAY index=%d size=%dx%d id=\"%s\" handle=%p\n",i,sz[0],sz[1],did,displays[i]);
     }
 
     int wc=0;
@@ -117,6 +150,7 @@ int main(void) {
     }
 
     printf("window_count=%d\n",wc);
+    int hinted=0;
     for(int i=0;i<wc;++i){
         void *w=wins[i];
         int posx,posy,sizew,sizeh,srcx,srcy,srcw,srch;
@@ -132,17 +166,28 @@ int main(void) {
         int type=get_one(win_iv,w,SCREEN_PROPERTY_TYPE);
         int rb=get_one(win_iv,w,SCREEN_PROPERTY_RENDER_BUFFER_COUNT);
         int trans=get_one(win_iv,w,SCREEN_PROPERTY_TRANSPARENCY);
+        int alpha=get_one(win_iv,w,SCREEN_PROPERTY_GLOBAL_ALPHA);
+        int rotation=get_one(win_iv,w,SCREEN_PROPERTY_ROTATION);
+        int swap=get_one(win_iv,w,SCREEN_PROPERTY_SWAP_INTERVAL);
+        int bufx,bufy;
+        get_pair(win_iv,w,SCREEN_PROPERTY_BUFFER_SIZE,&bufx,&bufy);
         char id[128],name[128],group[128];
         get_text(win_cv,w,SCREEN_PROPERTY_ID_STRING,id,sizeof(id));
         get_text(win_cv,w,SCREEN_PROPERTY_NAME,name,sizeof(name));
         get_text(win_cv,w,SCREEN_PROPERTY_GROUP,group,sizeof(group));
         void *disp=0;
         int di=-1;
-        if(win_pv(w,11,&disp)==0 && disp) di=display_index(disp,displays,dc);
+        if(win_pv(w,SCREEN_PROPERTY_DISPLAY,&disp)==0 && disp) di=display_index(disp,displays,dc);
+        bool hint=carplay_hint(id,name,group);
+        if(hint)++hinted;
 
-        printf("WINDOW index=%d pid=%d display=%d visible=%d z=%d type=%d format=%d usage=0x%x rb=%d trans=%d pos=%d,%d size=%dx%d src=%d,%d+%dx%d id=\"%s\" name=\"%s\" group=\"%s\" handle=%p\n",
-            i,pid,di,vis,z,type,fmt,usage,rb,trans,posx,posy,sizew,sizeh,srcx,srcy,srcw,srch,id,name,group,w);
+        printf("WINDOW index=%d%s pid=%d display=%d visible=%d z=%d type=%d format=%d usage=0x%x rb=%d trans=%d alpha=%d rot=%d swap=%d pos=%d,%d size=%dx%d src=%d,%d+%dx%d buf=%dx%d id=\"%s\" name=\"%s\" group=\"%s\" handle=%p\n",
+            i,hint?" [CARPLAY_HINT]":"",pid,di,vis,z,type,fmt,usage,rb,trans,alpha,rotation,swap,posx,posy,sizew,sizeh,srcx,srcy,srcw,srch,bufx,bufy,id,name,group,w);
     }
+
+    printf("CARPLAY_HINT_WINDOWS=%d\n",hinted);
+    printf("PROBE_RESULT=OK\n");
+    printf("===== END PGCR v0.4 PROBE =====\n");
 
     free(wins);
     destroy_ctx(ctx);
