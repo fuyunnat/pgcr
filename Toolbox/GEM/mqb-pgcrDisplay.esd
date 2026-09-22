@@ -1,18 +1,18 @@
 ###########################################################################################
-# PGCR Display Lab v0.4 - CarPlay Source Probe + v0.3 fallback renderer
-# Read-only probe: enumerates QNX Screen windows/processes; does not reroute contexts.
+# PGCR Display Lab v0.5 - Direct CarPlay source routing lab + v0.4 probe history
+# Direct59 test temporarily routes stock smartphone displayable 59 to the cockpit and auto-restores.
 ###########################################################################################
 
 screen "PGCR Display Lab" Customization
 
 keyValue
     value   String sys 0x00000000 0
-    label   "PGCR v0.4 - CarPlay Source Lab"
+    label   "PGCR v0.5 - Direct CarPlay Source Lab"
     poll    0
 
 keyValue
     value   String sys 0x00000000 0
-    label   "Probe is READ-ONLY - no context/window changes"
+    label   "Direct59 test: temporary route + auto restore"
     poll    0
 
 script
@@ -34,6 +34,15 @@ script
 script
    value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_probe_show.sh"
    label   "Show last probe result"
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "--- v0.5 direct stock source test ---"
+    poll    0
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_direct59_test.sh"
+   label   "TEST Direct CarPlay source 59 - 15s"
 
 keyValue
     value   String sys 0x00000000 0
