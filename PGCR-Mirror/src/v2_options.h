@@ -21,7 +21,17 @@ struct Options {
     int failure_threshold;
     int capture_recover_ms;
     int hmi_poll_ms;
+
     BaseVideoLayoutProfiles profiles;
+
+    /* PGCR source viewport for Classic + Full only.
+     * cover=false preserves upstream FIT behavior.
+     * cover=true fills destination by cropping source without distortion. */
+    bool classic_full_cover;
+    float classic_full_zoom;
+    float classic_full_pan_x;
+    float classic_full_pan_y;
+
     MmiCaptureConfig capture;
     Mhi2qBackendConfig backend;
 };
