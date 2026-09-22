@@ -8,6 +8,9 @@ on:
     paths:
       - '.github/workflows/build-pgcr-v04-probe.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -23,6 +26,14 @@ jobs:
         with:
           repository: luka-dev/qnx65-armv7-toolchain
           path: qnx65-armv7-toolchain
+          fetch-depth: 1
+
+      - name: Checkout complete upstream SD base
+        uses: actions/checkout@v4
+        with:
+          repository: Lanye-z/MHI2Q-CarPlay-RGI-MMI-Mirror
+          ref: c7446061acc721968cf0840f534133f195d52ad5
+          path: upstream
           fetch-depth: 1
 
       - name: Build QNX toolchain
@@ -60,7 +71,8 @@ jobs:
             ST=/opt/qnx650/host/linux/x86/usr/bin/arm-unknown-nto-qnx6.5.0eabi-strings
             $RE -h /src/PGCR-Mirror/build/pgcr-mirror-display
             $RE -h /src/PGCR-Mirror/build/pgcr-screen-probe
-            ! $ST /src/PGCR-Mirror/build/pgcr-screen-probe | grep -E "screen_set_|dmdt sc|dmdt dc"
+            ! $ST /src/PGCR-Mirror/build/pgcr-screen-probe | grep -E "screen_set_|screen_create_window|screen_destroy_window|dmdt sc|dmdt dc"
+            $ST /src/PGCR-Mirror/build/pgcr-screen-probe | grep "PGCR_SCREEN_PROBE_V04"
           '
 
       - name: Build v0.4 SD overlay
@@ -116,3 +128,69 @@ jobs:
             PGCR-P0915-CarPlay-Probe-v0.4.zip.sha256
           if-no-files-found: error
           retention-days: 14
+
+      - name: Build v0.4 complete SD package
+        run: |
+          set -e
+          rm -rf full
+          mkdir -p full
+          cp -a upstream/. full/
+          rm -rf full/.git
+          unzip -o PGCR-P0915-CarPlay-Probe-v0.4.zip -d full
+
+          test -f full/metainfo2.txt
+          test -f full/Toolbox/GEM/mqb-main.esd
+          test -f full/Toolbox/GEM/mqb-mmiMirror.esd
+          test -f full/Toolbox/GEM/mqb-pgcrDisplay.esd
+          test -f full/Toolbox/apps/pgcr/pgcr-screen-probe
+
+          cat > full/README-PGCR-FULL-SD-v0.4.txt <<'EOF'
+          PGCR v0.4 COMPLETE SD - CarPlay Source Probe
+          =================================================
+          Complete upstream V2.2 SD base + PGCR v0.4 read-only source probe.
+          Extract all contents directly to an empty FAT32 SD root.
+
+          Test order:
+          1. Red Engineering Menu -> update Toolbox.
+          2. Green Menu -> PGCR Display Lab -> Install/Update PGCR v0.4.
+          3. Disconnect/exit CarPlay -> 1. Probe BASELINE.
+          4. Connect CarPlay, keep Amap visible -> 2. Probe CARPLAY.
+          5. 3. Compare probes - SHOW RESULT.
+          6. Photograph the result or read SD:/PGCR-Probe/compare.txt.
+
+          Probe is read-only: no Screen setters and no Cluster context rerouting.
+          EOF
+
+          (cd full && zip -r -9 ../PGCR-P0915-FULL-SD-v0.4.zip .)
+          sha256sum PGCR-P0915-FULL-SD-v0.4.zip > PGCR-P0915-FULL-SD-v0.4.zip.sha256
+
+      - name: Upload v0.4 complete SD
+        uses: actions/upload-artifact@v4
+        with:
+          name: PGCR-P0915-FULL-SD-v0.4
+          path: |
+            PGCR-P0915-FULL-SD-v0.4.zip
+            PGCR-P0915-FULL-SD-v0.4.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish direct-download v0.4
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          git clone "https://x-access-token:$GH_TOKEN@github.com/fuyunnat/pgcr.git" publish
+          cd publish
+          git checkout main
+          mkdir -p downloads
+          cp ../PGCR-P0915-FULL-SD-v0.4.zip downloads/
+          cp ../PGCR-P0915-FULL-SD-v0.4.zip.sha256 downloads/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add downloads/PGCR-P0915-FULL-SD-v0.4.zip downloads/PGCR-P0915-FULL-SD-v0.4.zip.sha256
+          if git diff --cached --quiet; then
+            echo "No download change to publish."
+          else
+            git commit -m "release: publish PGCR v0.4 CarPlay probe"
+            git push origin main
+          fi
