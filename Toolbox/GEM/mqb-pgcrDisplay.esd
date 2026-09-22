@@ -1,9 +1,9 @@
 ###########################################################################################
 #
-# PGCR Display Lab v0.2 - Crop / Zoom / Pan sidecar for Audi A4L B9 / MHI2Q P0915
+# PGCR Display Lab v0.3 - Amap asymmetric Crop / Cover / Pan
+# Sidecar for Audi A4L B9 / MHI2Q P0915.
 #
-# This screen is separate from the upstream "MMI Mirror" screen.
-# It does not replace or rename the author's menu or runtime.
+# Upstream "MMI Mirror" menu/runtime remains untouched.
 #
 ###########################################################################################
 
@@ -11,12 +11,12 @@ screen "PGCR Display Lab" Customization
 
 keyValue
     value   String sys 0x00000000 0
-    label   "PGCR v0.2 - Crop / Zoom / Pan"
+    label   "PGCR v0.3 - Amap Crop / Cover / Pan"
     poll    0
 
 keyValue
     value   String sys 0x00000000 0
-    label   "Sidecar runtime: pgcr-mirror-display"
+    label   "Asymmetric crop keeps aspect ratio - no stretch"
     poll    0
 
 keyValue
@@ -26,7 +26,7 @@ keyValue
 
 script
    value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/install_pgcr.sh"
-   label   "Install/Update PGCR v0.2"
+   label   "Install/Update PGCR v0.3"
 
 script
    value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/start_pgcr_toolbox.sh"
@@ -41,40 +41,40 @@ script
    label   "PGCR - Show current viewport"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_fit.sh"
-   label   "PGCR View - FIT original source"
-
-script
    value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_wide.sh"
-   label   "PGCR View - WIDE cover 1.00x"
+   label   "Baseline - WIDE cover 1.00x"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom110.sh"
-   label   "PGCR View - Zoom 1.10x center"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock06.sh"
+   label   "Amap Wide - trim left 6%"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom120.sh"
-   label   "PGCR View - Zoom 1.20x center"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock08.sh"
+   label   "Amap Wide - trim left 8% - recommended"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom135.sh"
-   label   "PGCR View - Zoom 1.35x center"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock10.sh"
+   label   "Amap Wide - trim left 10%"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom120_left.sh"
-   label   "PGCR Pan - Left @ 1.20x"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock12.sh"
+   label   "Amap Wide - trim left 12%"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom120_right.sh"
-   label   "PGCR Pan - Right @ 1.20x"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock08_up.sh"
+   label   "Amap 8% - pan source UP"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom120_up.sh"
-   label   "PGCR Pan - Up @ 1.20x"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock08_down.sh"
+   label   "Amap 8% - pan source DOWN"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom120_down.sh"
-   label   "PGCR Pan - Down @ 1.20x"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_crop_reset.sh"
+   label   "Reset Crop - centered WIDE 1.00x"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_fit.sh"
+   label   "FIT - original full source"
 
 script
    value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_switch_to_upstream.sh"
