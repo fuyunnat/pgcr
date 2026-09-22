@@ -1,0 +1,109 @@
+name: Build PGCR v0.2 Full SD Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/PGCR_FULL_SD_TRIGGER'
+      - '.github/workflows/build-pgcr-full-sd.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout upstream MMI Mirror V2.2 base
+        uses: actions/checkout@v4
+        with:
+          repository: Lanye-z/MHI2Q-CarPlay-RGI-MMI-Mirror
+          ref: c7446061acc721968cf0840f534133f195d52ad5
+          path: upstream
+          fetch-depth: 1
+
+      - name: Download verified PGCR v0.2 overlay
+        uses: actions/download-artifact@v4
+        with:
+          name: PGCR-P0915-Crop-Zoom-Pan-v0.2
+          path: pgcr-artifact
+          github-token: ${{ github.token }}
+          repository: fuyunnat/pgcr
+          run-id: 35746326602
+
+      - name: Assemble complete SD root
+        run: |
+          set -e
+          rm -rf dist
+          mkdir -p dist
+
+          cp -a upstream/. dist/
+          rm -rf dist/.git
+
+          test -f pgcr-artifact/PGCR-P0915-Crop-Zoom-Pan-v0.2.zip
+          unzip -o pgcr-artifact/PGCR-P0915-Crop-Zoom-Pan-v0.2.zip -d dist
+
+          test -f dist/metainfo2.txt
+          test -f dist/Toolbox/GEM/mqb-pgcrDisplay.esd
+          test -x dist/Toolbox/apps/pgcr/pgcr-mirror-display
+          test -f dist/Toolbox/GEM/mqb-mmiMirror.esd
+          test -f dist/Toolbox/apps/mmi-mirror/mmi-mirror-display
+
+          cat > dist/README-PGCR-FULL-SD.txt <<'EOF'
+          PGCR v0.2 COMPLETE SD PACKAGE
+          =============================
+
+          Base:
+          Lanye-z/MHI2Q-CarPlay-RGI-MMI-Mirror
+          pinned at c7446061acc721968cf0840f534133f195d52ad5
+
+          Added:
+          PGCR v0.2 Crop / Zoom / Pan sidecar
+
+          Target:
+          Audi A4L B9 / MHI2Q_CN_AUG22_P0915
+
+          This package is already merged.
+          For an empty FAT32 SD card:
+          1. Extract ALL contents of this ZIP directly to the SD card root.
+          2. Do not put the files inside an extra parent folder.
+          3. Insert SD1.
+          4. Red Engineering Menu -> Software Update -> SD1 -> update/install Toolbox as before.
+          5. Reboot MMI.
+          6. Green Menu -> mqbcoding -> customization.
+          7. Original "mmi mirror" stays intact.
+          8. Open "PGCR Display Lab".
+          9. Install/Update PGCR v0.2.
+          10. Reboot MMI.
+          11. PGCR Display Lab -> Start PGCR WideMap.
+          12. First test WIDE cover 1.00x.
+
+          Before PGCR testing, turn upstream MMI Mirror AutoStart OFF.
+
+          Rollback:
+          PGCR Display Lab -> Return to upstream MMI Mirror
+          or Uninstall PGCR sidecar.
+          EOF
+
+          (cd dist && zip -r -9 ../PGCR-P0915-FULL-SD-v0.2.zip .)
+          sha256sum PGCR-P0915-FULL-SD-v0.2.zip > PGCR-P0915-FULL-SD-v0.2.zip.sha256
+
+          echo "Package contents:"
+          unzip -l PGCR-P0915-FULL-SD-v0.2.zip | tail -20
+          echo "SHA256:"
+          cat PGCR-P0915-FULL-SD-v0.2.zip.sha256
+
+      - name: Upload complete SD package
+        uses: actions/upload-artifact@v4
+        with:
+          name: PGCR-P0915-FULL-SD-v0.2
+          path: |
+            PGCR-P0915-FULL-SD-v0.2.zip
+            PGCR-P0915-FULL-SD-v0.2.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
