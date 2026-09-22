@@ -27,7 +27,7 @@ bool ClusterVideoDisplay::init(const Mhi2qBackendConfig &cfg) {
     first_frame_presented_ = false;
     frame_count_ = 0;
     fprintf(stderr,
-            "display: ready output=%dx%d displayable=%d context_owner=java\n",
+            "display: ready output=%dx%d displayable=%d context_owner=java pgcr_viewport=enabled\n",
             cfg.width, cfg.height, cfg.displayable_id);
     return true;
 }
@@ -35,8 +35,6 @@ bool ClusterVideoDisplay::init(const Mhi2qBackendConfig &cfg) {
 bool ClusterVideoDisplay::present_uploaded_frame() {
     if (!ready_) return false;
 
-    /* Preserve the vehicle-tested first-frame timing from V2A/V2.2. The old
-     * no-op Native route call sat between these two submits; only that call is removed. */
     renderer_.draw();
     backend_.swap();
 
@@ -65,6 +63,7 @@ bool ClusterVideoDisplay::present_frame(const VideoFrame &frame) {
 bool ClusterVideoDisplay::present_test_grid() {
     if (!ready_) return false;
     renderer_.set_fullscreen_destination();
+    renderer_.set_source_view_full();
     if (!renderer_.upload_test_grid(backend_.width(), backend_.height())) {
         fprintf(stderr, "display: diagnostic grid upload failed\n");
         return false;
@@ -79,6 +78,16 @@ bool ClusterVideoDisplay::set_destination_rect(int x, int y, int width, int heig
 
 void ClusterVideoDisplay::set_fullscreen_destination() {
     if (ready_) renderer_.set_fullscreen_destination();
+}
+
+bool ClusterVideoDisplay::set_source_view_full() {
+    if (!ready_) return false;
+    return renderer_.set_source_view_full();
+}
+
+bool ClusterVideoDisplay::set_source_view_cover(float zoom, float pan_x, float pan_y) {
+    if (!ready_) return false;
+    return renderer_.set_source_view_cover(zoom, pan_x, pan_y);
 }
 
 void ClusterVideoDisplay::refresh() {
