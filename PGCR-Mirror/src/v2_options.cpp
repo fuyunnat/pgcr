@@ -37,6 +37,10 @@ void v2_defaults(Options *o) {
     o->classic_full_zoom=1.0f;
     o->classic_full_pan_x=0.0f;
     o->classic_full_pan_y=0.0f;
+    o->crop_left=0.0f;
+    o->crop_right=0.0f;
+    o->crop_top=0.0f;
+    o->crop_bottom=0.0f;
 
     o->capture.width=kCaptureWidth; o->capture.height=kCaptureHeight;
     o->capture.format=PIXEL_FORMAT_BGRA8888; o->capture.verbose=false;
@@ -51,8 +55,9 @@ void v2_usage(const char *a) {
       "Fixed contract: capture=1024x480/BGRA, output=1440x455, displayable=3, Java owns ctx80.\n"
       "Runtime: --hmi-poll-ms MS --capture-recover-ms MS --fps N\n"
       "Profiles: --classic-full-scale/offset-x/offset-y, --classic-small-*, --sport-full-*, --sport-small-*\n"
-      "PGCR Classic Full viewport: --classic-full-cover --classic-full-zoom Z --classic-full-pan-x X --classic-full-pan-y Y\n"
-      "  cover: aspect-preserving crop-to-fill; zoom 1.0..4.0; pan -1.0..1.0\n"
+      "PGCR Full viewport: --classic-full-cover --classic-full-zoom Z --classic-full-pan-x X --classic-full-pan-y Y\n"
+      "  crop margins: --crop-left L --crop-right R --crop-top T --crop-bottom B (0.0..0.44)\n"
+      "  cover/crop preserve aspect; margins are minimum trims; zoom 1.0..4.0; pan -1.0..1.0\n"
       "Legacy geometry aliases: --content-scale --offset-x --offset-y\n"
       "Other: --fullscreen --test-seconds --verbose --help\n", a, a);
 }
@@ -117,6 +122,18 @@ bool v2_parse_options(int argc, char **argv, Options *o) {
         else if(!strcmp(a,"--classic-full-pan-y")){
             if(!take_float(argc,argv,&i,&o->classic_full_pan_y))return false;
         }
+        else if(!strcmp(a,"--crop-left")){
+            if(!take_float(argc,argv,&i,&o->crop_left))return false;
+        }
+        else if(!strcmp(a,"--crop-right")){
+            if(!take_float(argc,argv,&i,&o->crop_right))return false;
+        }
+        else if(!strcmp(a,"--crop-top")){
+            if(!take_float(argc,argv,&i,&o->crop_top))return false;
+        }
+        else if(!strcmp(a,"--crop-bottom")){
+            if(!take_float(argc,argv,&i,&o->crop_bottom))return false;
+        }
 
         else if(!strcmp(a,"--content-scale")){
             float s; if(!take_float(argc,argv,&i,&s))return false;
@@ -156,7 +173,13 @@ bool v2_parse_options(int argc, char **argv, Options *o) {
 
     if(o->classic_full_zoom<1.0f||o->classic_full_zoom>4.0f||
        o->classic_full_pan_x<-1.0f||o->classic_full_pan_x>1.0f||
-       o->classic_full_pan_y<-1.0f||o->classic_full_pan_y>1.0f)
+       o->classic_full_pan_y<-1.0f||o->classic_full_pan_y>1.0f||
+       o->crop_left<0.0f||o->crop_left>=0.45f||
+       o->crop_right<0.0f||o->crop_right>=0.45f||
+       o->crop_top<0.0f||o->crop_top>=0.45f||
+       o->crop_bottom<0.0f||o->crop_bottom>=0.45f||
+       o->crop_left+o->crop_right>=0.90f||
+       o->crop_top+o->crop_bottom>=0.90f)
         return false;
 
     if(o->capture_recover_ms<500||o->capture_recover_ms>60000||
