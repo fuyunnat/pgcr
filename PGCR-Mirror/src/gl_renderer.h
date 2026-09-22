@@ -3,7 +3,7 @@
 
 #include "video_frame.h"
 #include <GLES2/gl2.h>
-#include <stddef.h>
+#include <cstddef>
 
 class GlRenderer {
 public:
@@ -33,7 +33,7 @@ private:
     GlRenderer &operator=(const GlRenderer &);
 
     bool compile_shader(GLuint shader, const char *source, const char *name);
-    bool ensure_upload_buffer(size_t bytes);
+    bool ensure_upload_buffer(std::size_t bytes);
     bool upload_packed_rgba_bytes(const unsigned char *pixels,
                                   int width, int height,
                                   bool swap_rb);
@@ -64,7 +64,7 @@ private:
     GLfloat vertices_[8];
     GLfloat texcoords_[8];
     unsigned char *upload_buffer_;
-    size_t upload_buffer_bytes_;
+    std::size_t upload_buffer_bytes_;
 };
 
 #endif
