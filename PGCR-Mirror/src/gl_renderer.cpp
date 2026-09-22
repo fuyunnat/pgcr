@@ -4,6 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+static const int kSourceViewFull = 0;
+static const int kSourceViewCover = 1;
+
 static const char *kVertexShader =
     "attribute vec2 aPosition;\n"
     "attribute vec2 aTexCoord;\n"
@@ -24,13 +27,23 @@ static const char *kFragmentShader =
     "  gl_FragColor = vec4(c.rgb, 1.0);\n"
     "}\n";
 
+static float clampf_local(float value, float lo, float hi) {
+    if (value < lo) return lo;
+    if (value > hi) return hi;
+    return value;
+}
+
 GlRenderer::GlRenderer()
     : program_(0), vertex_shader_(0), fragment_shader_(0), texture_(0),
       attr_position_(-1), attr_texcoord_(-1), uniform_texture_(-1),
       uniform_swap_rb_(-1), texture_width_(0), texture_height_(0),
-      output_width_(0), output_height_(0), swap_rb_(false), ready_(false),
+      output_width_(0), output_height_(0), dest_width_(0), dest_height_(0),
+      swap_rb_(false), ready_(false),
+      source_view_mode_(kSourceViewFull), source_zoom_(1.0f),
+      source_pan_x_(0.0f), source_pan_y_(0.0f),
       upload_buffer_(0), upload_buffer_bytes_(0) {
     memset(vertices_, 0, sizeof(vertices_));
+    memset(texcoords_, 0, sizeof(texcoords_));
 }
 
 GlRenderer::~GlRenderer() {
@@ -106,7 +119,13 @@ bool GlRenderer::init(int output_width, int output_height) {
     glViewport(0, 0, output_width_, output_height_);
 
     ready_ = true;
+    source_view_mode_ = kSourceViewFull;
+    source_zoom_ = 1.0f;
+    source_pan_x_ = 0.0f;
+    source_pan_y_ = 0.0f;
     set_fullscreen_destination();
+    set_source_view_full();
+
     fprintf(stderr, "renderer: GLES2 renderer initialized output=%dx%d\n",
             output_width_, output_height_);
     return true;
@@ -135,6 +154,7 @@ bool GlRenderer::upload_packed_rgba_bytes(const unsigned char *pixels,
                      GL_RGBA, GL_UNSIGNED_BYTE, pixels);
         texture_width_ = width;
         texture_height_ = height;
+        if (!update_texcoords()) return false;
         fprintf(stderr, "renderer: texture allocated %dx%d\n", width, height);
     } else {
         glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0,
@@ -250,7 +270,10 @@ bool GlRenderer::set_destination_rect(int x, int y, int width, int height) {
     vertices_[2] = left;  vertices_[3] = bottom;
     vertices_[4] = right; vertices_[5] = top;
     vertices_[6] = right; vertices_[7] = bottom;
-    return true;
+
+    dest_width_ = width;
+    dest_height_ = height;
+    return update_texcoords();
 }
 
 void GlRenderer::set_fullscreen_destination() {
@@ -258,15 +281,81 @@ void GlRenderer::set_fullscreen_destination() {
         set_destination_rect(0, 0, output_width_, output_height_);
 }
 
+bool GlRenderer::set_source_view_full() {
+    source_view_mode_ = kSourceViewFull;
+    source_zoom_ = 1.0f;
+    source_pan_x_ = 0.0f;
+    source_pan_y_ = 0.0f;
+    return update_texcoords();
+}
+
+bool GlRenderer::set_source_view_cover(float zoom, float pan_x, float pan_y) {
+    if (zoom < 1.0f || zoom > 4.0f ||
+        pan_x < -1.0f || pan_x > 1.0f ||
+        pan_y < -1.0f || pan_y > 1.0f) {
+        return false;
+    }
+
+    source_view_mode_ = kSourceViewCover;
+    source_zoom_ = zoom;
+    source_pan_x_ = pan_x;
+    source_pan_y_ = pan_y;
+    return update_texcoords();
+}
+
+bool GlRenderer::update_texcoords() {
+    if (source_view_mode_ == kSourceViewFull ||
+        texture_width_ <= 0 || texture_height_ <= 0 ||
+        dest_width_ <= 0 || dest_height_ <= 0) {
+        texcoords_[0] = 0.0f; texcoords_[1] = 0.0f;
+        texcoords_[2] = 0.0f; texcoords_[3] = 1.0f;
+        texcoords_[4] = 1.0f; texcoords_[5] = 0.0f;
+        texcoords_[6] = 1.0f; texcoords_[7] = 1.0f;
+        return true;
+    }
+
+    const float source_aspect = (float)texture_width_ / (float)texture_height_;
+    const float dest_aspect = (float)dest_width_ / (float)dest_height_;
+
+    float u_span = 1.0f;
+    float v_span = 1.0f;
+
+    if (dest_aspect > source_aspect) {
+        v_span = source_aspect / dest_aspect;
+    } else if (dest_aspect < source_aspect) {
+        u_span = dest_aspect / source_aspect;
+    }
+
+    u_span /= source_zoom_;
+    v_span /= source_zoom_;
+    u_span = clampf_local(u_span, 0.05f, 1.0f);
+    v_span = clampf_local(v_span, 0.05f, 1.0f);
+
+    const float free_u = 1.0f - u_span;
+    const float free_v = 1.0f - v_span;
+
+    float left = free_u * (source_pan_x_ + 1.0f) * 0.5f;
+    float top = free_v * (source_pan_y_ + 1.0f) * 0.5f;
+
+    left = clampf_local(left, 0.0f, free_u);
+    top = clampf_local(top, 0.0f, free_v);
+
+    const float right = left + u_span;
+    const float bottom = top + v_span;
+
+    texcoords_[0] = left;  texcoords_[1] = top;
+    texcoords_[2] = left;  texcoords_[3] = bottom;
+    texcoords_[4] = right; texcoords_[5] = top;
+    texcoords_[6] = right; texcoords_[7] = bottom;
+
+    fprintf(stderr,
+            "renderer: source cover zoom=%.3f pan=(%.3f,%.3f) uv=[%.4f,%.4f..%.4f,%.4f]\n",
+            source_zoom_, source_pan_x_, source_pan_y_, left, top, right, bottom);
+    return true;
+}
+
 void GlRenderer::draw() {
     if (!ready_ || !texture_) return;
-
-    static const GLfloat texcoords[] = {
-        0.0f, 0.0f,
-        0.0f, 1.0f,
-        1.0f, 0.0f,
-        1.0f, 1.0f
-    };
 
     glViewport(0, 0, output_width_, output_height_);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -280,7 +369,7 @@ void GlRenderer::draw() {
     glEnableVertexAttribArray((GLuint)attr_position_);
     glEnableVertexAttribArray((GLuint)attr_texcoord_);
     glVertexAttribPointer((GLuint)attr_position_, 2, GL_FLOAT, GL_FALSE, 0, vertices_);
-    glVertexAttribPointer((GLuint)attr_texcoord_, 2, GL_FLOAT, GL_FALSE, 0, texcoords);
+    glVertexAttribPointer((GLuint)attr_texcoord_, 2, GL_FLOAT, GL_FALSE, 0, texcoords_);
 
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
@@ -314,6 +403,12 @@ void GlRenderer::shutdown() {
     texture_height_ = 0;
     output_width_ = 0;
     output_height_ = 0;
+    dest_width_ = 0;
+    dest_height_ = 0;
+    source_view_mode_ = kSourceViewFull;
+    source_zoom_ = 1.0f;
+    source_pan_x_ = 0.0f;
+    source_pan_y_ = 0.0f;
     swap_rb_ = false;
     ready_ = false;
 }
