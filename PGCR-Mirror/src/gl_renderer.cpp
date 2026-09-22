@@ -6,6 +6,7 @@
 
 static const int kSourceViewFull = 0;
 static const int kSourceViewCover = 1;
+static const int kSourceViewCropCover = 2;
 
 static const char *kVertexShader =
     "attribute vec2 aPosition;\n"
@@ -41,6 +42,8 @@ GlRenderer::GlRenderer()
       swap_rb_(false), ready_(false),
       source_view_mode_(kSourceViewFull), source_zoom_(1.0f),
       source_pan_x_(0.0f), source_pan_y_(0.0f),
+      source_crop_left_(0.0f), source_crop_right_(0.0f),
+      source_crop_top_(0.0f), source_crop_bottom_(0.0f),
       upload_buffer_(0), upload_buffer_bytes_(0) {
     memset(vertices_, 0, sizeof(vertices_));
     memset(texcoords_, 0, sizeof(texcoords_));
@@ -123,6 +126,8 @@ bool GlRenderer::init(int output_width, int output_height) {
     source_zoom_ = 1.0f;
     source_pan_x_ = 0.0f;
     source_pan_y_ = 0.0f;
+    source_crop_left_ = source_crop_right_ = 0.0f;
+    source_crop_top_ = source_crop_bottom_ = 0.0f;
     set_fullscreen_destination();
     set_source_view_full();
 
@@ -290,16 +295,36 @@ bool GlRenderer::set_source_view_full() {
 }
 
 bool GlRenderer::set_source_view_cover(float zoom, float pan_x, float pan_y) {
+    return set_source_view_crop_cover(
+        0.0f, 0.0f, 0.0f, 0.0f, zoom, pan_x, pan_y);
+}
+
+bool GlRenderer::set_source_view_crop_cover(float crop_left, float crop_right,
+                                            float crop_top, float crop_bottom,
+                                            float zoom, float pan_x, float pan_y) {
     if (zoom < 1.0f || zoom > 4.0f ||
         pan_x < -1.0f || pan_x > 1.0f ||
-        pan_y < -1.0f || pan_y > 1.0f) {
+        pan_y < -1.0f || pan_y > 1.0f ||
+        crop_left < 0.0f || crop_left >= 0.45f ||
+        crop_right < 0.0f || crop_right >= 0.45f ||
+        crop_top < 0.0f || crop_top >= 0.45f ||
+        crop_bottom < 0.0f || crop_bottom >= 0.45f ||
+        crop_left + crop_right >= 0.90f ||
+        crop_top + crop_bottom >= 0.90f) {
         return false;
     }
 
-    source_view_mode_ = kSourceViewCover;
+    source_view_mode_ =
+        (crop_left == 0.0f && crop_right == 0.0f &&
+         crop_top == 0.0f && crop_bottom == 0.0f)
+        ? kSourceViewCover : kSourceViewCropCover;
     source_zoom_ = zoom;
     source_pan_x_ = pan_x;
     source_pan_y_ = pan_y;
+    source_crop_left_ = crop_left;
+    source_crop_right_ = crop_right;
+    source_crop_top_ = crop_top;
+    source_crop_bottom_ = crop_bottom;
     return update_texcoords();
 }
 
@@ -314,31 +339,46 @@ bool GlRenderer::update_texcoords() {
         return true;
     }
 
-    const float source_aspect = (float)texture_width_ / (float)texture_height_;
     const float dest_aspect = (float)dest_width_ / (float)dest_height_;
 
-    float u_span = 1.0f;
-    float v_span = 1.0f;
+    const float base_left = source_crop_left_;
+    const float base_right = 1.0f - source_crop_right_;
+    const float base_top = source_crop_top_;
+    const float base_bottom = 1.0f - source_crop_bottom_;
 
-    if (dest_aspect > source_aspect) {
-        v_span = source_aspect / dest_aspect;
-    } else if (dest_aspect < source_aspect) {
-        u_span = dest_aspect / source_aspect;
+    const float base_u_span = base_right - base_left;
+    const float base_v_span = base_bottom - base_top;
+    const float base_aspect =
+        (base_u_span * (float)texture_width_) /
+        (base_v_span * (float)texture_height_);
+
+    float u_span = base_u_span;
+    float v_span = base_v_span;
+
+    /* COVER inside the user-trimmed source rectangle. This preserves aspect:
+     * explicit crop margins are minimum trims; any extra cover crop is added
+     * only on the axis required by the destination aspect ratio. */
+    if (dest_aspect > base_aspect) {
+        v_span = (base_u_span * (float)texture_width_) /
+                 (dest_aspect * (float)texture_height_);
+    } else if (dest_aspect < base_aspect) {
+        u_span = (dest_aspect * base_v_span * (float)texture_height_) /
+                 (float)texture_width_;
     }
 
     u_span /= source_zoom_;
     v_span /= source_zoom_;
-    u_span = clampf_local(u_span, 0.05f, 1.0f);
-    v_span = clampf_local(v_span, 0.05f, 1.0f);
+    u_span = clampf_local(u_span, 0.05f, base_u_span);
+    v_span = clampf_local(v_span, 0.05f, base_v_span);
 
-    const float free_u = 1.0f - u_span;
-    const float free_v = 1.0f - v_span;
+    const float free_u = base_u_span - u_span;
+    const float free_v = base_v_span - v_span;
 
-    float left = free_u * (source_pan_x_ + 1.0f) * 0.5f;
-    float top = free_v * (source_pan_y_ + 1.0f) * 0.5f;
+    float left = base_left + free_u * (source_pan_x_ + 1.0f) * 0.5f;
+    float top = base_top + free_v * (source_pan_y_ + 1.0f) * 0.5f;
 
-    left = clampf_local(left, 0.0f, free_u);
-    top = clampf_local(top, 0.0f, free_v);
+    left = clampf_local(left, base_left, base_right - u_span);
+    top = clampf_local(top, base_top, base_bottom - v_span);
 
     const float right = left + u_span;
     const float bottom = top + v_span;
@@ -349,8 +389,11 @@ bool GlRenderer::update_texcoords() {
     texcoords_[6] = right; texcoords_[7] = bottom;
 
     fprintf(stderr,
-            "renderer: source cover zoom=%.3f pan=(%.3f,%.3f) uv=[%.4f,%.4f..%.4f,%.4f]\n",
-            source_zoom_, source_pan_x_, source_pan_y_, left, top, right, bottom);
+            "renderer: source crop-cover trim=(%.3f,%.3f,%.3f,%.3f) zoom=%.3f pan=(%.3f,%.3f) uv=[%.4f,%.4f..%.4f,%.4f]\n",
+            source_crop_left_, source_crop_right_,
+            source_crop_top_, source_crop_bottom_,
+            source_zoom_, source_pan_x_, source_pan_y_,
+            left, top, right, bottom);
     return true;
 }
 
@@ -409,6 +452,8 @@ void GlRenderer::shutdown() {
     source_zoom_ = 1.0f;
     source_pan_x_ = 0.0f;
     source_pan_y_ = 0.0f;
+    source_crop_left_ = source_crop_right_ = 0.0f;
+    source_crop_top_ = source_crop_bottom_ = 0.0f;
     swap_rb_ = false;
     ready_ = false;
 }
