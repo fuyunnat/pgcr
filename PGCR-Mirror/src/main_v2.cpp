@@ -21,7 +21,7 @@ int main(int argc,char **argv){
     setvbuf(stderr,0,_IOLBF,0);
 
     fprintf(stderr,
-      "PGCR Mirror v0.2 / MHI2Q V2.2-compatible\n"
+      "PGCR Mirror v0.3 / MHI2Q V2.2-compatible\n"
       "mode=%s capture=1024x480/BGRA output=1440x455 displayable=3\n"
       "hmi_poll=%dms capture_recover=%dms context_owner=java native_context_routing=removed\n"
       "classic_full_view=%s zoom=%.3f pan=(%.3f,%.3f)\n"
