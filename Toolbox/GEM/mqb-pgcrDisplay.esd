@@ -1,0 +1,63 @@
+###########################################################################################
+#
+# PGCR Display Lab - sidecar controls for Audi A4L B9 / MHI2Q P0915
+#
+# IMPORTANT:
+# - This screen is separate from the upstream "MMI Mirror" screen.
+# - It does not replace or rename the author's menu.
+# - PGCR scripts are namespaced with pgcr_*.
+#
+###########################################################################################
+
+screen "PGCR Display Lab" Customization
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "PGCR P0915 - Reversible display tuning"
+    poll    0
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "Upstream MMI Mirror menu remains untouched"
+    poll    0
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "Stage 1 changes Classic FULL scale only"
+    poll    0
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_geometry_status.sh"
+   label   "PGCR - Show current geometry"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_063.sh"
+   label   "PGCR Classic Full 63% - baseline"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_075.sh"
+   label   "PGCR Classic Full 75%"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_080.sh"
+   label   "PGCR Classic Full 80% - first test"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_085.sh"
+   label   "PGCR Classic Full 85%"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_090.sh"
+   label   "PGCR Classic Full 90%"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_095.sh"
+   label   "PGCR Classic Full 95%"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_100.sh"
+   label   "PGCR Classic Full 100% - edge test"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_restore_original.sh"
+   label   "PGCR - Restore pre-PGCR geometry"
