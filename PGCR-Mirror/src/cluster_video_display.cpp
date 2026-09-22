@@ -90,6 +90,15 @@ bool ClusterVideoDisplay::set_source_view_cover(float zoom, float pan_x, float p
     return renderer_.set_source_view_cover(zoom, pan_x, pan_y);
 }
 
+bool ClusterVideoDisplay::set_source_view_crop_cover(float crop_left, float crop_right,
+                                                     float crop_top, float crop_bottom,
+                                                     float zoom, float pan_x, float pan_y) {
+    if (!ready_) return false;
+    return renderer_.set_source_view_crop_cover(
+        crop_left, crop_right, crop_top, crop_bottom,
+        zoom, pan_x, pan_y);
+}
+
 void ClusterVideoDisplay::refresh() {
     if (!ready_) return;
     renderer_.draw();
