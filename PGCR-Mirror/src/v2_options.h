@@ -31,6 +31,10 @@ struct Options {
     float classic_full_zoom;
     float classic_full_pan_x;
     float classic_full_pan_y;
+    float crop_left;
+    float crop_right;
+    float crop_top;
+    float crop_bottom;
 
     MmiCaptureConfig capture;
     Mhi2qBackendConfig backend;
