@@ -17,7 +17,7 @@ keyValue
 
 script
    value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/install_pgcr.sh"
-   label   "Install/Update PGCR v0.4"
+   label   "Install/Update PGCR runtime"
 
 script
    value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_probe_baseline.sh"
