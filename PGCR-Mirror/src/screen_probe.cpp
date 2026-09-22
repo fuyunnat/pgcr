@@ -106,10 +106,17 @@ int main(void) {
         dlclose(lib); return 3;
     }
 
+    /*
+     * Probe windows through WINDOW_MANAGER first. On P0915 the
+     * DISPLAY_MANAGER context can enumerate physical displays but reports
+     * WINDOW_COUNT=0, which makes a CarPlay differential impossible.
+     * WINDOW_MANAGER is still read-only here: this binary resolves no Screen
+     * setters and creates/destroys no vehicle windows.
+     */
     void *ctx=0;
-    int ctx_type=SCREEN_DISPLAY_MANAGER_CONTEXT;
+    int ctx_type=SCREEN_WINDOW_MANAGER_CONTEXT;
     if(create_ctx(&ctx,ctx_type)!=0){
-        ctx=0; ctx_type=SCREEN_WINDOW_MANAGER_CONTEXT;
+        ctx=0; ctx_type=SCREEN_DISPLAY_MANAGER_CONTEXT;
         if(create_ctx(&ctx,ctx_type)!=0){
             fprintf(stderr,"PROBE_ERROR cannot create manager context errno=%d\n",errno);
             dlclose(lib); return 4;
@@ -122,7 +129,7 @@ int main(void) {
     void *displays[32]; memset(displays,0,sizeof(displays));
     if(dc>0 && ctx_pv(ctx,SCREEN_PROPERTY_DISPLAYS,displays)!=0) dc=0;
 
-    printf("===== PGCR v0.4 CarPlay Source Probe =====\n");
+    printf("===== PGCR v0.4.1 CarPlay Source Probe =====\n");
     printf("mode=READ_ONLY\n");
     printf("NOTE=no existing vehicle window is created/moved/resized/destroyed\n");
     printf("PGCR_SCREEN_PROBE_V04\n");
