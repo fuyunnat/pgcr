@@ -1,11 +1,9 @@
 ###########################################################################################
 #
-# PGCR Display Lab - sidecar controls for Audi A4L B9 / MHI2Q P0915
+# PGCR Display Lab v0.2 - Crop / Zoom / Pan sidecar for Audi A4L B9 / MHI2Q P0915
 #
-# IMPORTANT:
-# - This screen is separate from the upstream "MMI Mirror" screen.
-# - It does not replace or rename the author's menu.
-# - PGCR scripts are namespaced with pgcr_*.
+# This screen is separate from the upstream "MMI Mirror" screen.
+# It does not replace or rename the author's menu or runtime.
 #
 ###########################################################################################
 
@@ -13,51 +11,75 @@ screen "PGCR Display Lab" Customization
 
 keyValue
     value   String sys 0x00000000 0
-    label   "PGCR P0915 - Reversible display tuning"
+    label   "PGCR v0.2 - Crop / Zoom / Pan"
     poll    0
 
 keyValue
     value   String sys 0x00000000 0
-    label   "Upstream MMI Mirror menu remains untouched"
+    label   "Sidecar runtime: pgcr-mirror-display"
     poll    0
 
 keyValue
     value   String sys 0x00000000 0
-    label   "Stage 1 changes Classic FULL scale only"
+    label   "Upstream MMI Mirror stays untouched"
     poll    0
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_geometry_status.sh"
-   label   "PGCR - Show current geometry"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/install_pgcr.sh"
+   label   "Install/Update PGCR v0.2"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_063.sh"
-   label   "PGCR Classic Full 63% - baseline"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/start_pgcr_toolbox.sh"
+   label   "Start PGCR WideMap"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_075.sh"
-   label   "PGCR Classic Full 75%"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/stop_pgcr_toolbox.sh"
+   label   "Stop PGCR"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_080.sh"
-   label   "PGCR Classic Full 80% - first test"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_status.sh"
+   label   "PGCR - Show current viewport"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_085.sh"
-   label   "PGCR Classic Full 85%"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_fit.sh"
+   label   "PGCR View - FIT original source"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_090.sh"
-   label   "PGCR Classic Full 90%"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_wide.sh"
+   label   "PGCR View - WIDE cover 1.00x"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_095.sh"
-   label   "PGCR Classic Full 95%"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom110.sh"
+   label   "PGCR View - Zoom 1.10x center"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_100.sh"
-   label   "PGCR Classic Full 100% - edge test"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom120.sh"
+   label   "PGCR View - Zoom 1.20x center"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_restore_original.sh"
-   label   "PGCR - Restore pre-PGCR geometry"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom135.sh"
+   label   "PGCR View - Zoom 1.35x center"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom120_left.sh"
+   label   "PGCR Pan - Left @ 1.20x"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom120_right.sh"
+   label   "PGCR Pan - Right @ 1.20x"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom120_up.sh"
+   label   "PGCR Pan - Up @ 1.20x"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_zoom120_down.sh"
+   label   "PGCR Pan - Down @ 1.20x"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_switch_to_upstream.sh"
+   label   "Return to upstream MMI Mirror"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/uninstall_pgcr.sh"
+   label   "Uninstall PGCR sidecar"
