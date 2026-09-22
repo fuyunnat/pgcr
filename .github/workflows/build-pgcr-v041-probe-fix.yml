@@ -1,0 +1,91 @@
+name: Build PGCR v0.4.1 Probe Fix
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/build-pgcr-v041-probe-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout PGCR source
+        uses: actions/checkout@v4
+        with:
+          ref: dev-crop-zoom-pan
+
+      - name: Checkout QNX toolchain
+        uses: actions/checkout@v4
+        with:
+          repository: luka-dev/qnx65-armv7-toolchain
+          path: qnx65-armv7-toolchain
+          fetch-depth: 1
+
+      - name: Build toolchain
+        run: |
+          docker build --platform=linux/amd64 --target base-env --build-arg BASE=base-8.5 \
+            -t qnx65-armv7-toolchain:8.5 qnx65-armv7-toolchain
+
+      - name: Compile fixed read-only probe
+        run: |
+          mkdir -p PGCR-Mirror/build
+          docker run --rm --platform=linux/amd64 -v "$PWD":/src qnx65-armv7-toolchain:8.5 sh -c '
+            set -e
+            cd /src/PGCR-Mirror
+            CC=/opt/qnx650/host/linux/x86/usr/bin/arm-unknown-nto-qnx6.5.0eabi-gcc
+            CXXLIB=/opt/qnx650/host/linux/x86/usr/arm-unknown-nto-qnx6.5.0eabi/lib/libstdc++.a
+            $CC -O2 -Wall -Wextra -fno-exceptions -fno-rtti \
+              src/screen_probe.cpp -o build/pgcr-screen-probe "$CXXLIB"
+          '
+
+      - name: Verify read-only probe
+        run: |
+          set -e
+          file PGCR-Mirror/build/pgcr-screen-probe
+          docker run --rm --platform=linux/amd64 -v "$PWD":/src qnx65-armv7-toolchain:8.5 sh -c '
+            set -e
+            ST=/opt/qnx650/host/linux/x86/usr/bin/arm-unknown-nto-qnx6.5.0eabi-strings
+            ! $ST /src/PGCR-Mirror/build/pgcr-screen-probe | grep -E "screen_set_|screen_create_window|screen_destroy_window"
+            $ST /src/PGCR-Mirror/build/pgcr-screen-probe | grep "PGCR_SCREEN_PROBE_V04"
+            $ST /src/PGCR-Mirror/build/pgcr-screen-probe | grep "v0.4.1 CarPlay Source Probe"
+          '
+
+      - name: Package one-file SD patch
+        run: |
+          set -e
+          rm -rf patch
+          mkdir -p patch/Toolbox/apps/pgcr
+          cp PGCR-Mirror/build/pgcr-screen-probe patch/Toolbox/apps/pgcr/
+          chmod +x patch/Toolbox/apps/pgcr/pgcr-screen-probe
+          cat > patch/README-v0.4.1.txt <<'EOF'
+          PGCR v0.4.1 P0915 probe fix
+          ============================
+          Fix: use WINDOW_MANAGER for QNX Screen window enumeration.
+          v0.4 baseline showed WINDOW_COUNT=0 under DISPLAY_MANAGER.
+
+          Replace/merge this patch into the existing v0.4 SD card.
+          No red engineering-menu update is required because menu/scripts are unchanged.
+          Then Green Menu -> PGCR Display Lab -> Install/Update PGCR v0.4.
+          Re-run Probe BASELINE, then Probe CARPLAY, then Compare.
+          EOF
+          (cd patch && zip -r -9 ../PGCR-P0915-v0.4.1-PROBE-FIX.zip .)
+          sha256sum PGCR-P0915-v0.4.1-PROBE-FIX.zip > PGCR-P0915-v0.4.1-PROBE-FIX.zip.sha256
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG=pgcr-v0.4.1-probe-fix
+          gh release create "$TAG" \
+            PGCR-P0915-v0.4.1-PROBE-FIX.zip \
+            PGCR-P0915-v0.4.1-PROBE-FIX.zip.sha256 \
+            --title "PGCR v0.4.1 P0915 Probe Fix" \
+            --notes "One-file SD patch. Fixes P0915 WINDOW_COUNT=0 by probing with WINDOW_MANAGER first. Read-only probe; no Screen setters."
