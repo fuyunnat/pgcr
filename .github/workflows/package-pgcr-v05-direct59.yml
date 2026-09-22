@@ -54,7 +54,7 @@ jobs:
           cat > full/README-PGCR-FULL-SD-v0.5.txt <<'EOF'
           PGCR v0.5 COMPLETE SD - Direct CarPlay Source 59 Test
           ======================================================
-          Based on the verified v0.4.1 P0915 package.
+          Based on the verified v0.4.1 P0915 package.\n          Build profile: direct59-safe-restore.
 
           New test:
             PGCR Display Lab -> TEST Direct CarPlay source 59 - 15s
