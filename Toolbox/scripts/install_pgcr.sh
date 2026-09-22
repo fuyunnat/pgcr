@@ -23,7 +23,7 @@ CFG_SRC="${SOURCE}/config.local"
 
 [ -d /mnt/app/root/mmi-mirror ] || {
     echo "ERROR: upstream MMI Mirror V2.2 runtime is not installed."
-    echo "PGCR v0.2 uses the existing Java ctx80 controller and must be installed after upstream V2.2."
+    echo "PGCR v0.3 uses the existing Java ctx80 controller and must be installed after upstream V2.2."
     exit 1
 }
 
@@ -85,7 +85,7 @@ rm -rf "$ROLLBACK" 2>/dev/null || true
 sync 2>/dev/null || true
 mount -ur /mnt/app 2>/dev/null || true
 
-echo "PGCR Mirror v0.2 installed."
+echo "PGCR Mirror v0.3 installed."
 echo "Upstream MMI Mirror files were not modified."
 echo "Use Green Menu -> PGCR Display Lab -> Start PGCR WideMap."
 exit 0
