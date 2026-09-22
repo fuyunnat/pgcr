@@ -73,6 +73,10 @@ set_key PGCR_CLASSIC_FULL_MODE "$MODE" "$CFG" || exit 1
 set_key PGCR_CLASSIC_FULL_ZOOM "$ZOOM" "$CFG" || exit 1
 set_key PGCR_CLASSIC_FULL_PAN_X "$PANX" "$CFG" || exit 1
 set_key PGCR_CLASSIC_FULL_PAN_Y "$PANY" "$CFG" || exit 1
+set_key PGCR_CROP_LEFT "0.00" "$CFG" || exit 1
+set_key PGCR_CROP_RIGHT "0.00" "$CFG" || exit 1
+set_key PGCR_CROP_TOP "0.00" "$CFG" || exit 1
+set_key PGCR_CROP_BOTTOM "0.00" "$CFG" || exit 1
 
 sync 2>/dev/null || true
 mount -ur /mnt/app 2>/dev/null || true
@@ -81,6 +85,7 @@ echo "PGCR viewport updated:"
 echo "  mode=$MODE"
 echo "  zoom=$ZOOM"
 echo "  pan=($PANX,$PANY)"
+echo "  crop=(0.00,0.00,0.00,0.00)"
 
 if [ "$WAS_RUNNING" -eq 1 ]; then
     /bin/sh /eso/hmi/engdefs/scripts/mqb/start_pgcr_toolbox.sh || exit 1
