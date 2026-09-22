@@ -1,78 +1,95 @@
 # PGCR P0915 — Stage 1 install/test guide
 
-Target vehicle: Audi A4L B9 / MHI2Q_CN_AUG22_P0915 with a working MMI Mirror V2.2 installation.
+Target vehicle: Audi A4L B9 / `MHI2Q_CN_AUG22_P0915` with an already-working upstream MMI Mirror V2.2 installation.
+
+## Non-destructive rule
+
+PGCR is a **sidecar**. It deliberately does not replace the author's MMI Mirror screen, runtime binaries, install menu, AutoStart menu or rollback payloads.
+
+The original upstream menu stays:
+
+```
+mqbcoding -> customization -> mmi mirror
+```
+
+PGCR adds a separate menu:
+
+```
+mqbcoding -> customization -> PGCR Display Lab
+```
+
+All PGCR scripts use the `pgcr_` prefix.
 
 ## What Stage 1 changes
 
-Only the supported runtime geometry key below is changed:
+Only the installed runtime value below is changed when a preset is selected:
 
 ```
 MMI_CLASSIC_FULL_SCALE
 ```
 
-The verified V2.2 native binary, Unified Java JAR, ctx80 ownership, displayable IDs, AutoStart hook and rollback payloads are not replaced by PGCR Stage 1.
+The verified V2.2 native binary, Unified Java JAR, ctx80 ownership, displayable IDs, AutoStart hook and upstream rollback files are not replaced.
 
 ## Prepare the SD card
 
-Start from the same known-good MHI2Q-CarPlay-RGI-MMI-Mirror SD card that already works on the vehicle.
+Start from the same known-good upstream V2.2 SD card that already works on the vehicle.
 
-Overlay these PGCR paths onto that card:
+Overlay **only** these PGCR files onto that card:
 
 ```
-Toolbox/GEM/mqb-mmiMirror.esd
+Toolbox/GEM/mqb-pgcrDisplay.esd
 Toolbox/scripts/pgcr_*.sh
 ```
 
-Do not remove the existing V2.2 payload or Backup directory.
+Do **not** replace:
 
-## Install the PGCR Green Menu controls
+```
+Toolbox/GEM/mqb-mmiMirror.esd
+Toolbox/apps/mmi-mirror/*
+Toolbox/scripts/install_mmi_mirror.sh
+Toolbox/scripts/start_mmi_mirror_toolbox.sh
+Toolbox/scripts/stop_mmi_mirror_toolbox.sh
+Toolbox/scripts/autostart_mmi_mirror_*.sh
+```
+
+Keep the upstream `Backup` directory intact.
+
+## Install PGCR controls
 
 1. Vehicle safely parked; maintain stable vehicle power.
 2. Insert SD card in SD1.
 3. Use the normal Audi red Software Update flow to update Toolbox.
 4. Let the update finish and reboot normally.
 5. Enter Green Engineering Menu.
-6. Go to `mqbcoding -> customization -> mmi mirror`.
+6. Go to `mqbcoding -> customization -> PGCR Display Lab`.
 
-New entries should appear:
-
-```
-PGCR - Show current geometry
-PGCR Classic FULL 63% - V2.2 baseline
-PGCR Classic FULL 75%
-PGCR Classic FULL 80% - first test
-PGCR Classic FULL 85%
-PGCR Classic FULL 90%
-PGCR Classic FULL 95%
-PGCR Classic FULL 100% - edge test
-PGCR - Restore pre-PGCR geometry
-```
+The original `mmi mirror` menu should still be present separately.
 
 ## First vehicle test
 
-Start with **80%** only.
+Start with **PGCR Classic Full 80%** only.
 
-The preset helper will:
+The PGCR helper will:
 
-1. detect whether MMI Mirror is running;
-2. stop it if needed;
-3. preserve the exact pre-PGCR `config.local` once as `config.local.pgcr-original`;
+1. detect whether the existing upstream MMI Mirror session is running;
+2. use the existing upstream Stop helper if needed;
+3. preserve the exact pre-PGCR installed `config.local` once as `config.local.pgcr-original`;
 4. change only `MMI_CLASSIC_FULL_SCALE`;
 5. remount `/mnt/app` read-only again;
-6. restart Mirror if it was running before the change.
+6. use the existing upstream Start helper if Mirror was running before the change.
 
-The other three profiles are not changed.
+The other three geometry profiles are left unchanged.
 
 ## Rollback
 
 Two rollback choices exist:
 
-- **Classic FULL 63%**: sets the Classic Full scale to the published V2.2 baseline.
-- **Restore pre-PGCR geometry**: restores the exact `config.local` captured before the first PGCR preset.
+- **PGCR Classic Full 63%**: set Classic Full to the current published V2.2 baseline.
+- **PGCR - Restore pre-PGCR geometry**: restore the exact installed `config.local` captured before the first PGCR change.
 
-This Stage 1 feature does not uninstall MMI Mirror and does not alter AutoStart.
+PGCR does not uninstall MMI Mirror and does not change AutoStart.
 
-## Testing sequence
+## Test sequence
 
 Recommended progression:
 
@@ -80,12 +97,10 @@ Recommended progression:
 0.80 -> 0.85 -> 0.90 -> 0.95
 ```
 
-Use 1.00 only as an edge test after the lower values are checked for clipping.
+Use 1.00 only after lower values are checked for clipping.
 
-For every step, photograph the instrument cluster in:
-- Classic FULL;
-- Classic SMALL;
-- CarPlay/Amap map screen;
-- a non-map MMI screen.
-
-Do not tune or photograph the engineering menu while driving.
+Test parked. Photograph:
+- Classic Full;
+- Classic Small;
+- Amap/CarPlay map;
+- a non-map MMI page.
