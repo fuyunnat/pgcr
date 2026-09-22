@@ -46,7 +46,7 @@ echo "$PID" > "$PIDFILE" 2>/dev/null || true
 sleep 1
 
 if kill -0 "$PID" 2>/dev/null; then
-    echo "PGCR Mirror v0.2 started. Wrapper PID: $PID"
+    echo "PGCR Mirror v0.3 started. Wrapper PID: $PID"
     echo "Log: /tmp/pgcr-mirror.log"
     exit 0
 fi
