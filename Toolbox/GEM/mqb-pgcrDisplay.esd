@@ -1,63 +1,78 @@
 ###########################################################################################
-#
-# PGCR Display Lab - sidecar controls for Audi A4L B9 / MHI2Q P0915
-#
-# IMPORTANT:
-# - This screen is separate from the upstream "MMI Mirror" screen.
-# - It does not replace or rename the author's menu.
-# - PGCR scripts are namespaced with pgcr_*.
-#
+# PGCR Display Lab v0.5 - Direct CarPlay source routing lab + v0.4 probe history
+# Direct59 test temporarily routes stock smartphone displayable 59 to the cockpit and auto-restores.
 ###########################################################################################
 
 screen "PGCR Display Lab" Customization
 
 keyValue
     value   String sys 0x00000000 0
-    label   "PGCR P0915 - Reversible display tuning"
+    label   "PGCR v0.5 - Direct CarPlay Source Lab"
     poll    0
 
 keyValue
     value   String sys 0x00000000 0
-    label   "Upstream MMI Mirror menu remains untouched"
+    label   "Direct59 test: temporary route + auto restore"
     poll    0
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/install_pgcr.sh"
+   label   "Install/Update PGCR runtime"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_probe_baseline.sh"
+   label   "1. Probe BASELINE - CarPlay disconnected"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_probe_carplay.sh"
+   label   "2. Probe CARPLAY - Amap visible"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_probe_compare.sh"
+   label   "3. Compare probes - SHOW RESULT"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_probe_show.sh"
+   label   "Show last probe result"
 
 keyValue
     value   String sys 0x00000000 0
-    label   "Stage 1 changes Classic FULL scale only"
+    label   "--- v0.5 direct stock source test ---"
     poll    0
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_geometry_status.sh"
-   label   "PGCR - Show current geometry"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_direct59_test.sh"
+   label   "TEST Direct CarPlay source 59 - 15s"
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "--- v0.3 renderer fallback ---"
+    poll    0
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_063.sh"
-   label   "PGCR Classic Full 63% - baseline"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/start_pgcr_toolbox.sh"
+   label   "Start PGCR WideMap"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_075.sh"
-   label   "PGCR Classic Full 75%"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/stop_pgcr_toolbox.sh"
+   label   "Stop PGCR"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_080.sh"
-   label   "PGCR Classic Full 80% - first test"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_wide.sh"
+   label   "Baseline - WIDE cover 1.00x"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_085.sh"
-   label   "PGCR Classic Full 85%"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock08.sh"
+   label   "Amap Wide - trim left 8%"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_090.sh"
-   label   "PGCR Classic Full 90%"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_fit.sh"
+   label   "FIT - original full source"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_095.sh"
-   label   "PGCR Classic Full 95%"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_switch_to_upstream.sh"
+   label   "Return to upstream MMI Mirror"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_classic_full_100.sh"
-   label   "PGCR Classic Full 100% - edge test"
-
-script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_restore_original.sh"
-   label   "PGCR - Restore pre-PGCR geometry"
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/uninstall_pgcr.sh"
+   label   "Uninstall PGCR sidecar"

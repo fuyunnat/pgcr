@@ -1,0 +1,141 @@
+name: Build PGCR v0.2 QNX ARMv7
+
+on:
+  push:
+    branches:
+      - dev-crop-zoom-pan
+    paths:
+      - 'PGCR-Mirror/**'
+      - 'Toolbox/**'
+      - '.github/workflows/build-pgcr-v02.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout PGCR
+        uses: actions/checkout@v4
+
+      - name: Checkout QNX 6.5 ARMv7 toolchain
+        uses: actions/checkout@v4
+        with:
+          repository: luka-dev/qnx65-armv7-toolchain
+          path: qnx65-armv7-toolchain
+          fetch-depth: 1
+
+      - name: Build QNX C/C++ toolchain image
+        run: |
+          docker build \
+            --platform=linux/amd64 \
+            --target base-env \
+            --build-arg BASE=base-8.5 \
+            -t qnx65-armv7-toolchain:8.5 \
+            qnx65-armv7-toolchain
+
+      - name: Compile PGCR QNX ARMv7 binary
+        run: |
+          mkdir -p PGCR-Mirror/build
+          docker run --rm \
+            --platform=linux/amd64 \
+            -v "$PWD":/src \
+            qnx65-armv7-toolchain:8.5 \
+            bash -lc '
+              cd /src/PGCR-Mirror
+              arm-unknown-nto-qnx6.5.0eabi-g++ \
+                -O2 -Wall -Wextra -fno-exceptions -fno-rtti \
+                -static-libstdc++ -static-libgcc \
+                -Isrc \
+                src/main_v2.cpp \
+                src/v2_options.cpp \
+                src/v2_runtime.cpp \
+                src/mmi_capture_source.cpp \
+                src/cluster_layout_state.cpp \
+                src/base_video_layout_controller.cpp \
+                src/cluster_video_display.cpp \
+                src/mhi2q_backend.cpp \
+                src/gl_renderer.cpp \
+                -o build/pgcr-mirror-display \
+                -lEGL -lGLESv2 -lm
+            '
+
+      - name: Verify binary
+        run: |
+          file PGCR-Mirror/build/pgcr-mirror-display
+          docker run --rm \
+            --platform=linux/amd64 \
+            -v "$PWD":/src \
+            qnx65-armv7-toolchain:8.5 \
+            bash -lc '
+              arm-unknown-nto-qnx6.5.0eabi-readelf -h /src/PGCR-Mirror/build/pgcr-mirror-display
+              arm-unknown-nto-qnx6.5.0eabi-readelf -d /src/PGCR-Mirror/build/pgcr-mirror-display | grep NEEDED || true
+              ! arm-unknown-nto-qnx6.5.0eabi-strings /src/PGCR-Mirror/build/pgcr-mirror-display | grep -E "/eso/bin/apps/dmdt|dmdt gs|dmdt sc|dmdt dc"
+            '
+
+      - name: Build SD overlay
+        run: |
+          rm -rf dist
+          mkdir -p dist/Toolbox/GEM
+          mkdir -p dist/Toolbox/scripts
+          mkdir -p dist/Toolbox/apps/pgcr/scripts
+
+          cp Toolbox/GEM/mqb-pgcrDisplay.esd dist/Toolbox/GEM/
+          cp Toolbox/scripts/install_pgcr.sh dist/Toolbox/scripts/
+          cp Toolbox/scripts/start_pgcr_toolbox.sh dist/Toolbox/scripts/
+          cp Toolbox/scripts/stop_pgcr_toolbox.sh dist/Toolbox/scripts/
+          cp Toolbox/scripts/uninstall_pgcr.sh dist/Toolbox/scripts/
+          cp Toolbox/scripts/pgcr_*.sh dist/Toolbox/scripts/
+
+          cp Toolbox/apps/pgcr/config.local dist/Toolbox/apps/pgcr/
+          cp Toolbox/apps/pgcr/scripts/start_pgcr_mirror.sh dist/Toolbox/apps/pgcr/scripts/
+          cp Toolbox/apps/pgcr/scripts/bounded_log.sh dist/Toolbox/apps/pgcr/scripts/
+          cp PGCR-Mirror/build/pgcr-mirror-display dist/Toolbox/apps/pgcr/
+
+          chmod +x dist/Toolbox/scripts/*.sh
+          chmod +x dist/Toolbox/apps/pgcr/scripts/*.sh
+          chmod +x dist/Toolbox/apps/pgcr/pgcr-mirror-display
+
+          cat > dist/README-PGCR-v0.2.txt <<'EOF'
+          PGCR v0.2 - Crop / Zoom / Pan
+          =================================
+
+          Target:
+          Audi A4L B9 / MHI2Q_CN_AUG22_P0915
+          Requires the already-working upstream MMI Mirror V2.2 installation.
+
+          This is a SIDE-CAR overlay:
+          - it does NOT overwrite upstream mmi mirror menu
+          - it does NOT replace upstream mmi-mirror-display
+          - it does NOT modify upstream AutoStart / uninstall / recovery
+
+          Copy/unzip this package into the root of the existing working SD card,
+          merge folders, then update Toolbox using the same red engineering menu flow.
+
+          New menu:
+          mqbcoding -> customization -> PGCR Display Lab
+
+          First test:
+          Install/Update PGCR v0.2
+          then Start PGCR WideMap
+          then try WIDE 1.00x before higher zoom values.
+
+          Return to original:
+          "Return to upstream MMI Mirror"
+          or "Uninstall PGCR sidecar".
+          EOF
+
+          (cd dist && zip -r -9 ../PGCR-P0915-Crop-Zoom-Pan-v0.2.zip .)
+          sha256sum PGCR-P0915-Crop-Zoom-Pan-v0.2.zip > PGCR-P0915-Crop-Zoom-Pan-v0.2.zip.sha256
+
+      - name: Upload SD overlay artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PGCR-P0915-Crop-Zoom-Pan-v0.2
+          path: |
+            PGCR-P0915-Crop-Zoom-Pan-v0.2.zip
+            PGCR-P0915-Crop-Zoom-Pan-v0.2.zip.sha256
+            PGCR-Mirror/build/pgcr-mirror-display
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,114 @@
+#include "cluster_video_display.h"
+
+#include <stdio.h>
+
+ClusterVideoDisplay::ClusterVideoDisplay()
+    : ready_(false), first_frame_presented_(false), frame_count_(0) {
+}
+
+ClusterVideoDisplay::~ClusterVideoDisplay() {
+    shutdown();
+}
+
+bool ClusterVideoDisplay::init(const Mhi2qBackendConfig &cfg) {
+    shutdown();
+
+    if (!backend_.init(cfg)) {
+        fprintf(stderr, "display: backend initialization failed\n");
+        return false;
+    }
+    if (!renderer_.init(cfg.width, cfg.height)) {
+        fprintf(stderr, "display: GLES renderer initialization failed\n");
+        backend_.shutdown();
+        return false;
+    }
+
+    ready_ = true;
+    first_frame_presented_ = false;
+    frame_count_ = 0;
+    fprintf(stderr,
+            "display: ready output=%dx%d displayable=%d context_owner=java pgcr_viewport=enabled\n",
+            cfg.width, cfg.height, cfg.displayable_id);
+    return true;
+}
+
+bool ClusterVideoDisplay::present_uploaded_frame() {
+    if (!ready_) return false;
+
+    renderer_.draw();
+    backend_.swap();
+
+    if (!first_frame_presented_) {
+        renderer_.draw();
+        backend_.swap();
+        first_frame_presented_ = true;
+    }
+
+    ++frame_count_;
+    return true;
+}
+
+bool ClusterVideoDisplay::present_frame(const VideoFrame &frame) {
+    if (!ready_) {
+        fprintf(stderr, "display: present_frame called before init\n");
+        return false;
+    }
+    if (!renderer_.upload_frame(frame)) {
+        fprintf(stderr, "display: frame texture upload failed\n");
+        return false;
+    }
+    return present_uploaded_frame();
+}
+
+bool ClusterVideoDisplay::present_test_grid() {
+    if (!ready_) return false;
+    renderer_.set_fullscreen_destination();
+    renderer_.set_source_view_full();
+    if (!renderer_.upload_test_grid(backend_.width(), backend_.height())) {
+        fprintf(stderr, "display: diagnostic grid upload failed\n");
+        return false;
+    }
+    return present_uploaded_frame();
+}
+
+bool ClusterVideoDisplay::set_destination_rect(int x, int y, int width, int height) {
+    if (!ready_) return false;
+    return renderer_.set_destination_rect(x, y, width, height);
+}
+
+void ClusterVideoDisplay::set_fullscreen_destination() {
+    if (ready_) renderer_.set_fullscreen_destination();
+}
+
+bool ClusterVideoDisplay::set_source_view_full() {
+    if (!ready_) return false;
+    return renderer_.set_source_view_full();
+}
+
+bool ClusterVideoDisplay::set_source_view_cover(float zoom, float pan_x, float pan_y) {
+    if (!ready_) return false;
+    return renderer_.set_source_view_cover(zoom, pan_x, pan_y);
+}
+
+bool ClusterVideoDisplay::set_source_view_crop_cover(float crop_left, float crop_right,
+                                                     float crop_top, float crop_bottom,
+                                                     float zoom, float pan_x, float pan_y) {
+    if (!ready_) return false;
+    return renderer_.set_source_view_crop_cover(
+        crop_left, crop_right, crop_top, crop_bottom,
+        zoom, pan_x, pan_y);
+}
+
+void ClusterVideoDisplay::refresh() {
+    if (!ready_) return;
+    renderer_.draw();
+    backend_.swap();
+}
+
+void ClusterVideoDisplay::shutdown() {
+    if (ready_) renderer_.shutdown();
+    backend_.shutdown();
+    ready_ = false;
+    first_frame_presented_ = false;
+    frame_count_ = 0;
+}
