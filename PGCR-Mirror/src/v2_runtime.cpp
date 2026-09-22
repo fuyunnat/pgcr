@@ -48,9 +48,8 @@ static void set_ready_marker(bool ready) {
     fclose(fp);
 }
 
-static bool is_classic_full(const ClusterLayoutState &state) {
-    return state.layout == CLUSTER_LAYOUT_CLASSIC &&
-           state.view == CLUSTER_VIEW_FULL;
+static bool is_full_view(const ClusterLayoutState &state) {
+    return state.view == CLUSTER_VIEW_FULL;
 }
 
 static bool apply_layout(ClusterVideoDisplay *display,
@@ -60,7 +59,7 @@ static bool apply_layout(ClusterVideoDisplay *display,
                          const char *source) {
     char name[64];
 
-    if (is_classic_full(state) && opt.classic_full_cover) {
+    if (is_full_view(state) && opt.classic_full_cover) {
         display->set_fullscreen_destination();
         if (!display->set_source_view_cover(
                 opt.classic_full_zoom,
@@ -70,7 +69,7 @@ static bool apply_layout(ClusterVideoDisplay *display,
         }
 
         fprintf(stderr,
-                "layout: state=%s source=%s mode=PGCR_COVER dst=1440x455@(0,0) zoom=%.3f pan=(%.3f,%.3f)\n",
+                "layout: state=%s source=%s mode=PGCR_FULL_COVER dst=1440x455@(0,0) zoom=%.3f pan=(%.3f,%.3f)\n",
                 ClusterLayoutStateReader::state_name(state,name,sizeof(name)),
                 source?source:"unknown",
                 opt.classic_full_zoom,
