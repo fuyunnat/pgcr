@@ -24,6 +24,9 @@ public:
      * then applies additional zoom and normalized pan (-1..1). */
     bool set_source_view_full();
     bool set_source_view_cover(float zoom, float pan_x, float pan_y);
+    bool set_source_view_crop_cover(float crop_left, float crop_right,
+                                    float crop_top, float crop_bottom,
+                                    float zoom, float pan_x, float pan_y);
 
     void draw();
     void shutdown();
@@ -60,6 +63,10 @@ private:
     float source_zoom_;
     float source_pan_x_;
     float source_pan_y_;
+    float source_crop_left_;
+    float source_crop_right_;
+    float source_crop_top_;
+    float source_crop_bottom_;
 
     GLfloat vertices_[8];
     GLfloat texcoords_[8];
