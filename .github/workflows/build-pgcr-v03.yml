@@ -1,0 +1,98 @@
+name: Build PGCR v0.3 SD Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/PGCR_BUILD_TRIGGER'
+      - '.github/workflows/build-pgcr-v03.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout PGCR dev branch
+        uses: actions/checkout@v4
+        with:
+          ref: dev-crop-zoom-pan
+
+      - name: Checkout QNX 6.5 ARMv7 toolchain
+        uses: actions/checkout@v4
+        with:
+          repository: luka-dev/qnx65-armv7-toolchain
+          path: qnx65-armv7-toolchain
+          fetch-depth: 1
+
+      - name: Build QNX toolchain
+        run: |
+          docker build             --platform=linux/amd64             --target base-env             --build-arg BASE=base-8.5             -t qnx65-armv7-toolchain:8.5             qnx65-armv7-toolchain
+
+      - name: Compile PGCR ARMv7 binary
+        run: |
+          mkdir -p PGCR-Mirror/build
+          docker run --rm             --platform=linux/amd64             -v "$PWD":/src             qnx65-armv7-toolchain:8.5             sh -c '
+              cd /src/PGCR-Mirror
+              /opt/qnx650/host/linux/x86/usr/bin/arm-unknown-nto-qnx6.5.0eabi-gcc                 -O2 -Wall -Wextra -fno-exceptions -fno-rtti                 -Isrc                 src/main_v2.cpp                 src/v2_options.cpp                 src/v2_runtime.cpp                 src/mmi_capture_source.cpp                 src/cluster_layout_state.cpp                 src/base_video_layout_controller.cpp                 src/cluster_video_display.cpp                 src/mhi2q_backend.cpp                 src/gl_renderer.cpp                 -o build/pgcr-mirror-display                 /opt/qnx650/host/linux/x86/usr/arm-unknown-nto-qnx6.5.0eabi/lib/libstdc++.a                 -lEGL -lGLESv2 -lm
+            '
+
+      - name: Verify PGCR binary
+        run: |
+          file PGCR-Mirror/build/pgcr-mirror-display
+          docker run --rm             --platform=linux/amd64             -v "$PWD":/src             qnx65-armv7-toolchain:8.5             sh -c '
+              /opt/qnx650/host/linux/x86/usr/bin/arm-unknown-nto-qnx6.5.0eabi-readelf -h /src/PGCR-Mirror/build/pgcr-mirror-display
+              ! /opt/qnx650/host/linux/x86/usr/bin/arm-unknown-nto-qnx6.5.0eabi-strings /src/PGCR-Mirror/build/pgcr-mirror-display | grep -E "/eso/bin/apps/dmdt|dmdt gs|dmdt sc|dmdt dc"
+            '
+
+      - name: Build SD overlay ZIP
+        run: |
+          rm -rf dist
+          mkdir -p dist/Toolbox/GEM
+          mkdir -p dist/Toolbox/scripts
+          mkdir -p dist/Toolbox/apps/pgcr/scripts
+
+          cp Toolbox/GEM/mqb-pgcrDisplay.esd dist/Toolbox/GEM/
+          cp Toolbox/scripts/install_pgcr.sh dist/Toolbox/scripts/
+          cp Toolbox/scripts/start_pgcr_toolbox.sh dist/Toolbox/scripts/
+          cp Toolbox/scripts/stop_pgcr_toolbox.sh dist/Toolbox/scripts/
+          cp Toolbox/scripts/uninstall_pgcr.sh dist/Toolbox/scripts/
+          cp Toolbox/scripts/pgcr_*.sh dist/Toolbox/scripts/
+
+          cp Toolbox/apps/pgcr/config.local dist/Toolbox/apps/pgcr/
+          cp Toolbox/apps/pgcr/scripts/start_pgcr_mirror.sh dist/Toolbox/apps/pgcr/scripts/
+          cp Toolbox/apps/pgcr/scripts/bounded_log.sh dist/Toolbox/apps/pgcr/scripts/
+          cp PGCR-Mirror/build/pgcr-mirror-display dist/Toolbox/apps/pgcr/
+
+          chmod +x dist/Toolbox/scripts/*.sh
+          chmod +x dist/Toolbox/apps/pgcr/scripts/*.sh
+          chmod +x dist/Toolbox/apps/pgcr/pgcr-mirror-display
+
+          cat > dist/README-PGCR-v0.3.txt <<'EOF'
+          PGCR v0.3 - Amap asymmetric Crop / Cover / Pan
+
+          1. Merge this ZIP into the root of your existing working V2.2 SD card.
+          2. Red Engineering Menu -> Software Update -> update Toolbox as before.
+          3. Reboot MMI.
+          4. Green Menu -> mqbcoding -> customization -> PGCR Display Lab.
+          5. Install/Update PGCR v0.3.
+          6. Reboot MMI.
+          7. PGCR Display Lab -> Start PGCR WideMap.
+          8. Start with WIDE 1.00x, then test Amap trim-left 6% / 8% / 10% / 12%.
+          9. Return to original at any time with "Return to upstream MMI Mirror".
+          EOF
+
+          (cd dist && zip -r -9 ../PGCR-P0915-Amap-Crop-v0.3.zip .)
+          sha256sum PGCR-P0915-Amap-Crop-v0.3.zip > PGCR-P0915-Amap-Crop-v0.3.zip.sha256
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: PGCR-P0915-Amap-Crop-v0.3
+          path: |
+            PGCR-P0915-Amap-Crop-v0.3.zip
+            PGCR-P0915-Amap-Crop-v0.3.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
