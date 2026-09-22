@@ -1,0 +1,118 @@
+name: Build PGCR v0.4 CarPlay Source Probe
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/build-pgcr-v04-probe.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout PGCR v0.4 source
+        uses: actions/checkout@v4
+        with:
+          ref: dev-crop-zoom-pan
+
+      - name: Checkout QNX 6.5 ARMv7 toolchain
+        uses: actions/checkout@v4
+        with:
+          repository: luka-dev/qnx65-armv7-toolchain
+          path: qnx65-armv7-toolchain
+          fetch-depth: 1
+
+      - name: Build QNX toolchain
+        run: |
+          docker build --platform=linux/amd64 --target base-env --build-arg BASE=base-8.5 \
+            -t qnx65-armv7-toolchain:8.5 qnx65-armv7-toolchain
+
+      - name: Compile PGCR renderer and read-only Screen probe
+        run: |
+          mkdir -p PGCR-Mirror/build
+          docker run --rm --platform=linux/amd64 -v "$PWD":/src qnx65-armv7-toolchain:8.5 sh -c '
+            set -e
+            cd /src/PGCR-Mirror
+            CC=/opt/qnx650/host/linux/x86/usr/bin/arm-unknown-nto-qnx6.5.0eabi-gcc
+            CXXLIB=/opt/qnx650/host/linux/x86/usr/arm-unknown-nto-qnx6.5.0eabi/lib/libstdc++.a
+
+            $CC -O2 -Wall -Wextra -fno-exceptions -fno-rtti -Isrc \
+              src/main_v2.cpp src/v2_options.cpp src/v2_runtime.cpp \
+              src/mmi_capture_source.cpp src/cluster_layout_state.cpp \
+              src/base_video_layout_controller.cpp src/cluster_video_display.cpp \
+              src/mhi2q_backend.cpp src/gl_renderer.cpp \
+              -o build/pgcr-mirror-display $CXXLIB -lEGL -lGLESv2 -lm
+
+            $CC -O2 -Wall -Wextra -fno-exceptions -fno-rtti \
+              src/screen_probe.cpp -o build/pgcr-screen-probe $CXXLIB
+          '
+
+      - name: Verify QNX ARMv7 binaries
+        run: |
+          file PGCR-Mirror/build/pgcr-mirror-display
+          file PGCR-Mirror/build/pgcr-screen-probe
+          docker run --rm --platform=linux/amd64 -v "$PWD":/src qnx65-armv7-toolchain:8.5 sh -c '
+            set -e
+            RE=/opt/qnx650/host/linux/x86/usr/bin/arm-unknown-nto-qnx6.5.0eabi-readelf
+            ST=/opt/qnx650/host/linux/x86/usr/bin/arm-unknown-nto-qnx6.5.0eabi-strings
+            $RE -h /src/PGCR-Mirror/build/pgcr-mirror-display
+            $RE -h /src/PGCR-Mirror/build/pgcr-screen-probe
+            ! $ST /src/PGCR-Mirror/build/pgcr-screen-probe | grep -E "screen_set_|dmdt sc|dmdt dc"
+          '
+
+      - name: Build v0.4 SD overlay
+        run: |
+          set -e
+          rm -rf dist
+          mkdir -p dist/Toolbox/GEM dist/Toolbox/scripts dist/Toolbox/apps/pgcr/scripts
+
+          cp Toolbox/GEM/mqb-pgcrDisplay.esd dist/Toolbox/GEM/
+          cp Toolbox/scripts/install_pgcr.sh dist/Toolbox/scripts/
+          cp Toolbox/scripts/start_pgcr_toolbox.sh dist/Toolbox/scripts/
+          cp Toolbox/scripts/stop_pgcr_toolbox.sh dist/Toolbox/scripts/
+          cp Toolbox/scripts/uninstall_pgcr.sh dist/Toolbox/scripts/
+          cp Toolbox/scripts/pgcr_*.sh dist/Toolbox/scripts/
+
+          cp Toolbox/apps/pgcr/config.local dist/Toolbox/apps/pgcr/
+          cp Toolbox/apps/pgcr/scripts/start_pgcr_mirror.sh dist/Toolbox/apps/pgcr/scripts/
+          cp Toolbox/apps/pgcr/scripts/bounded_log.sh dist/Toolbox/apps/pgcr/scripts/
+          cp PGCR-Mirror/build/pgcr-mirror-display dist/Toolbox/apps/pgcr/
+          cp PGCR-Mirror/build/pgcr-screen-probe dist/Toolbox/apps/pgcr/
+
+          chmod +x dist/Toolbox/scripts/*.sh
+          chmod +x dist/Toolbox/apps/pgcr/scripts/*.sh
+          chmod +x dist/Toolbox/apps/pgcr/pgcr-mirror-display
+          chmod +x dist/Toolbox/apps/pgcr/pgcr-screen-probe
+
+          cat > dist/README-PGCR-v0.4.txt <<'EOF'
+          PGCR v0.4 - CarPlay Source Probe
+          =================================
+          Read-only diagnostic build for MHI2Q_CN_AUG22_P0915.
+
+          1. Update Toolbox.
+          2. Green Menu -> PGCR Display Lab -> Install/Update PGCR v0.4.
+          3. Disconnect CarPlay -> run "1. Probe BASELINE".
+          4. Connect CarPlay and show Amap -> run "2. Probe CARPLAY".
+          5. Run "3. Compare probes - SHOW RESULT".
+          6. Photograph the result screen.
+          7. Full raw results are also copied to SD/PGCR-Probe/.
+
+          Probe does not call Screen setters and does not change Cluster contexts.
+          v0.3 renderer remains available as fallback.
+          EOF
+
+          (cd dist && zip -r -9 ../PGCR-P0915-CarPlay-Probe-v0.4.zip .)
+          sha256sum PGCR-P0915-CarPlay-Probe-v0.4.zip > PGCR-P0915-CarPlay-Probe-v0.4.zip.sha256
+
+      - name: Upload v0.4 overlay
+        uses: actions/upload-artifact@v4
+        with:
+          name: PGCR-P0915-CarPlay-Probe-v0.4
+          path: |
+            PGCR-P0915-CarPlay-Probe-v0.4.zip
+            PGCR-P0915-CarPlay-Probe-v0.4.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
