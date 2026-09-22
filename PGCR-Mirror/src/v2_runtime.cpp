@@ -61,7 +61,11 @@ static bool apply_layout(ClusterVideoDisplay *display,
 
     if (is_full_view(state) && opt.classic_full_cover) {
         display->set_fullscreen_destination();
-        if (!display->set_source_view_cover(
+        if (!display->set_source_view_crop_cover(
+                opt.crop_left,
+                opt.crop_right,
+                opt.crop_top,
+                opt.crop_bottom,
                 opt.classic_full_zoom,
                 opt.classic_full_pan_x,
                 opt.classic_full_pan_y)) {
@@ -69,9 +73,11 @@ static bool apply_layout(ClusterVideoDisplay *display,
         }
 
         fprintf(stderr,
-                "layout: state=%s source=%s mode=PGCR_FULL_COVER dst=1440x455@(0,0) zoom=%.3f pan=(%.3f,%.3f)\n",
+                "layout: state=%s source=%s mode=PGCR_FULL_CROP_COVER dst=1440x455@(0,0) trim=(%.3f,%.3f,%.3f,%.3f) zoom=%.3f pan=(%.3f,%.3f)\n",
                 ClusterLayoutStateReader::state_name(state,name,sizeof(name)),
                 source?source:"unknown",
+                opt.crop_left, opt.crop_right,
+                opt.crop_top, opt.crop_bottom,
                 opt.classic_full_zoom,
                 opt.classic_full_pan_x,
                 opt.classic_full_pan_y);
@@ -338,7 +344,7 @@ int v2_run_mmi(const Options &opt){
             char n[64];
 
             fprintf(stderr,
-                    "stats: fps=%lu.%02lu capture_frames=%lu presented_frames=%lu stride=%d hmi=%s pgcr_cover=%d zoom=%.3f pan=(%.3f,%.3f)\n",
+                    "stats: fps=%lu.%02lu capture_frames=%lu presented_frames=%lu stride=%d hmi=%s pgcr_cover=%d trim=(%.3f,%.3f,%.3f,%.3f) zoom=%.3f pan=(%.3f,%.3f)\n",
                     fps100/100,fps100%100,
                     capture.frame_count(),
                     display.frame_count(),
@@ -346,6 +352,8 @@ int v2_run_mmi(const Options &opt){
                     ClusterLayoutStateReader::state_name(
                         state_now,n,sizeof(n)),
                     opt.classic_full_cover?1:0,
+                    opt.crop_left, opt.crop_right,
+                    opt.crop_top, opt.crop_bottom,
                     opt.classic_full_zoom,
                     opt.classic_full_pan_x,
                     opt.classic_full_pan_y);
