@@ -1,0 +1,39 @@
+name: Publish PGCR v0.4 Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/publish-pgcr-v04-release.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify published ZIP
+        run: |
+          set -e
+          test -f downloads/PGCR-P0915-FULL-SD-v0.4.zip
+          unzip -t downloads/PGCR-P0915-FULL-SD-v0.4.zip
+          echo "006a65a90358deabd49f0116b13997717f9a93a558e7227b07ab0dd48e134bdf  downloads/PGCR-P0915-FULL-SD-v0.4.zip" | sha256sum -c -
+          stat -c '%s bytes' downloads/PGCR-P0915-FULL-SD-v0.4.zip
+
+      - name: Publish GitHub Release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG="pgcr-v0.4-probe"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG"               downloads/PGCR-P0915-FULL-SD-v0.4.zip               downloads/PGCR-P0915-FULL-SD-v0.4.zip.sha256               --clobber
+          else
+            gh release create "$TAG"               downloads/PGCR-P0915-FULL-SD-v0.4.zip               downloads/PGCR-P0915-FULL-SD-v0.4.zip.sha256               --title "PGCR v0.4 CarPlay Source Probe"               --notes "Read-only CarPlay/QNX Screen source probe for MHI2Q_CN_AUG22_P0915. Complete SD package. ZIP integrity and SHA256 verified before publishing."
+          fi
