@@ -52,7 +52,12 @@ jobs:
           test -f /tmp/pgcr-dist/Toolbox/GEM/mqb-main.esd
           test -f /tmp/pgcr-dist/Toolbox/GEM/mqb-mmiMirror.esd
           test -f /tmp/pgcr-dist/Toolbox/GEM/mqb-pgcrDisplay.esd
-          test -x /tmp/pgcr-dist/Toolbox/apps/pgcr/pgcr-mirror-display
+          test -f /tmp/pgcr-dist/Toolbox/apps/mmi-mirror/mmi-mirror-display
+          test -f /tmp/pgcr-dist/Toolbox/apps/pgcr/pgcr-mirror-display
+          chmod +x /tmp/pgcr-dist/Toolbox/apps/mmi-mirror/mmi-mirror-display
+          chmod +x /tmp/pgcr-dist/Toolbox/apps/pgcr/pgcr-mirror-display
+          find /tmp/pgcr-dist/Toolbox/scripts -type f -name '*.sh' -exec chmod +x {} \;
+          find /tmp/pgcr-dist/Toolbox/apps -type f -path '*/scripts/*.sh' -exec chmod +x {} \;
 
           rm -f downloads/PGCR-P0915-FULL-SD-v0.3.zip
           (cd /tmp/pgcr-dist && zip -r -9 "$GITHUB_WORKSPACE/downloads/PGCR-P0915-FULL-SD-v0.3.zip" .)
