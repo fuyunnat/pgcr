@@ -12,6 +12,10 @@ grep '^PGCR_CLASSIC_FULL_MODE=' "$CFG" 2>/dev/null || true
 grep '^PGCR_CLASSIC_FULL_ZOOM=' "$CFG" 2>/dev/null || true
 grep '^PGCR_CLASSIC_FULL_PAN_X=' "$CFG" 2>/dev/null || true
 grep '^PGCR_CLASSIC_FULL_PAN_Y=' "$CFG" 2>/dev/null || true
+grep '^PGCR_CROP_LEFT=' "$CFG" 2>/dev/null || true
+grep '^PGCR_CROP_RIGHT=' "$CFG" 2>/dev/null || true
+grep '^PGCR_CROP_TOP=' "$CFG" 2>/dev/null || true
+grep '^PGCR_CROP_BOTTOM=' "$CFG" 2>/dev/null || true
 
 if command -v pidin >/dev/null 2>&1 && pidin ar 2>/dev/null | grep '[p]gcr-mirror-display' >/dev/null 2>&1; then
     echo "PGCR process: RUNNING"
