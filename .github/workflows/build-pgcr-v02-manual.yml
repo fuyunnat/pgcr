@@ -34,17 +34,17 @@ jobs:
       - name: Compile PGCR ARMv7 binary
         run: |
           mkdir -p PGCR-Mirror/build
-          docker run --rm             --platform=linux/amd64             -v "$PWD":/src             qnx65-armv7-toolchain:8.5             bash -lc '
+          docker run --rm             --platform=linux/amd64             -v "$PWD":/src             qnx65-armv7-toolchain:8.5             sh -c '
               cd /src/PGCR-Mirror
-              arm-unknown-nto-qnx6.5.0eabi-g++                 -O2 -Wall -Wextra -fno-exceptions -fno-rtti                 -static-libstdc++ -static-libgcc                 -Isrc                 src/main_v2.cpp                 src/v2_options.cpp                 src/v2_runtime.cpp                 src/mmi_capture_source.cpp                 src/cluster_layout_state.cpp                 src/base_video_layout_controller.cpp                 src/cluster_video_display.cpp                 src/mhi2q_backend.cpp                 src/gl_renderer.cpp                 -o build/pgcr-mirror-display                 -lEGL -lGLESv2 -lm
+              /opt/qnx650/host/linux/x86/usr/bin/arm-unknown-nto-qnx6.5.0eabi-gcc                 -O2 -Wall -Wextra -fno-exceptions -fno-rtti                 -Isrc                 src/main_v2.cpp                 src/v2_options.cpp                 src/v2_runtime.cpp                 src/mmi_capture_source.cpp                 src/cluster_layout_state.cpp                 src/base_video_layout_controller.cpp                 src/cluster_video_display.cpp                 src/mhi2q_backend.cpp                 src/gl_renderer.cpp                 -o build/pgcr-mirror-display                 /opt/qnx650/host/linux/x86/usr/arm-unknown-nto-qnx6.5.0eabi/lib/libstdc++.a                 -lEGL -lGLESv2 -lm
             '
 
       - name: Verify PGCR binary
         run: |
           file PGCR-Mirror/build/pgcr-mirror-display
-          docker run --rm             --platform=linux/amd64             -v "$PWD":/src             qnx65-armv7-toolchain:8.5             bash -lc '
-              arm-unknown-nto-qnx6.5.0eabi-readelf -h /src/PGCR-Mirror/build/pgcr-mirror-display
-              ! arm-unknown-nto-qnx6.5.0eabi-strings /src/PGCR-Mirror/build/pgcr-mirror-display | grep -E "/eso/bin/apps/dmdt|dmdt gs|dmdt sc|dmdt dc"
+          docker run --rm             --platform=linux/amd64             -v "$PWD":/src             qnx65-armv7-toolchain:8.5             sh -c '
+              /opt/qnx650/host/linux/x86/usr/bin/arm-unknown-nto-qnx6.5.0eabi-readelf -h /src/PGCR-Mirror/build/pgcr-mirror-display
+              ! /opt/qnx650/host/linux/x86/usr/bin/arm-unknown-nto-qnx6.5.0eabi-strings /src/PGCR-Mirror/build/pgcr-mirror-display | grep -E "/eso/bin/apps/dmdt|dmdt gs|dmdt sc|dmdt dc"
             '
 
       - name: Build SD overlay ZIP
