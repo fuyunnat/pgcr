@@ -19,6 +19,12 @@ public:
     bool set_destination_rect(int x, int y, int width, int height);
     void set_fullscreen_destination();
 
+    /* Source viewport controls. FULL preserves the upstream texture mapping.
+     * COVER fills the destination without distortion by cropping the source,
+     * then applies additional zoom and normalized pan (-1..1). */
+    bool set_source_view_full();
+    bool set_source_view_cover(float zoom, float pan_x, float pan_y);
+
     void draw();
     void shutdown();
 
@@ -31,6 +37,7 @@ private:
     bool upload_packed_rgba_bytes(const unsigned char *pixels,
                                   int width, int height,
                                   bool swap_rb);
+    bool update_texcoords();
 
     GLuint program_;
     GLuint vertex_shader_;
@@ -44,10 +51,18 @@ private:
     int texture_height_;
     int output_width_;
     int output_height_;
+    int dest_width_;
+    int dest_height_;
     bool swap_rb_;
     bool ready_;
 
+    int source_view_mode_;
+    float source_zoom_;
+    float source_pan_x_;
+    float source_pan_y_;
+
     GLfloat vertices_[8];
+    GLfloat texcoords_[8];
     unsigned char *upload_buffer_;
     size_t upload_buffer_bytes_;
 };
