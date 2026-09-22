@@ -1,0 +1,74 @@
+name: Build PGCR v0.3 Full SD Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/build-pgcr-v03-full-sd.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout upstream complete SD base
+        uses: actions/checkout@v4
+        with:
+          repository: Lanye-z/MHI2Q-CarPlay-RGI-MMI-Mirror
+          ref: c7446061acc721968cf0840f534133f195d52ad5
+          path: upstream
+          fetch-depth: 1
+
+      - name: Download verified PGCR v0.3 overlay
+        uses: actions/download-artifact@v4
+        with:
+          name: PGCR-P0915-Amap-Crop-v0.3
+          path: pgcr-artifact
+          github-token: ${{ github.token }}
+          repository: fuyunnat/pgcr
+          run-id: 35753016990
+
+      - name: Assemble complete SD root
+        run: |
+          set -e
+          rm -rf dist
+          mkdir -p dist
+          cp -a upstream/. dist/
+          rm -rf dist/.git
+          test -f pgcr-artifact/PGCR-P0915-Amap-Crop-v0.3.zip
+          unzip -o pgcr-artifact/PGCR-P0915-Amap-Crop-v0.3.zip -d dist
+
+          test -f dist/metainfo2.txt
+          test -f dist/Toolbox/GEM/mqb-main.esd
+          test -f dist/Toolbox/GEM/mqb-mmiMirror.esd
+          test -f dist/Toolbox/GEM/mqb-pgcrDisplay.esd
+          test -x dist/Toolbox/apps/mmi-mirror/mmi-mirror-display
+          test -x dist/Toolbox/apps/pgcr/pgcr-mirror-display
+
+          cat > dist/README-PGCR-FULL-SD-v0.3.txt <<'EOF'
+          PGCR v0.3 COMPLETE SD PACKAGE
+          =================================
+          Complete SD root: upstream V2.2 base + PGCR v0.3 Amap asymmetric crop.
+          Extract ALL contents directly to an empty FAT32 SD card root.
+          Do not replace only the Toolbox folder with the small overlay package.
+          EOF
+
+          (cd dist && zip -r -9 ../PGCR-P0915-FULL-SD-v0.3.zip .)
+          sha256sum PGCR-P0915-FULL-SD-v0.3.zip > PGCR-P0915-FULL-SD-v0.3.zip.sha256
+
+      - name: Upload complete SD package
+        uses: actions/upload-artifact@v4
+        with:
+          name: PGCR-P0915-FULL-SD-v0.3
+          path: |
+            PGCR-P0915-FULL-SD-v0.3.zip
+            PGCR-P0915-FULL-SD-v0.3.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
