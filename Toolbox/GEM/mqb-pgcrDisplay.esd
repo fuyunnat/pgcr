@@ -1,32 +1,44 @@
 ###########################################################################################
-#
-# PGCR Display Lab v0.3 - Amap asymmetric Crop / Cover / Pan
-# Sidecar for Audi A4L B9 / MHI2Q P0915.
-#
-# Upstream "MMI Mirror" menu/runtime remains untouched.
-#
+# PGCR Display Lab v0.4 - CarPlay Source Probe + v0.3 fallback renderer
+# Read-only probe: enumerates QNX Screen windows/processes; does not reroute contexts.
 ###########################################################################################
 
 screen "PGCR Display Lab" Customization
 
 keyValue
     value   String sys 0x00000000 0
-    label   "PGCR v0.3 - Amap Crop / Cover / Pan"
+    label   "PGCR v0.4 - CarPlay Source Lab"
     poll    0
 
 keyValue
     value   String sys 0x00000000 0
-    label   "Asymmetric crop keeps aspect ratio - no stretch"
-    poll    0
-
-keyValue
-    value   String sys 0x00000000 0
-    label   "Upstream MMI Mirror stays untouched"
+    label   "Probe is READ-ONLY - no context/window changes"
     poll    0
 
 script
    value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/install_pgcr.sh"
-   label   "Install/Update PGCR v0.3"
+   label   "Install/Update PGCR v0.4"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_probe_baseline.sh"
+   label   "1. Probe BASELINE - CarPlay disconnected"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_probe_carplay.sh"
+   label   "2. Probe CARPLAY - Amap visible"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_probe_compare.sh"
+   label   "3. Compare probes - SHOW RESULT"
+
+script
+   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_probe_show.sh"
+   label   "Show last probe result"
+
+keyValue
+    value   String sys 0x00000000 0
+    label   "--- v0.3 renderer fallback ---"
+    poll    0
 
 script
    value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/start_pgcr_toolbox.sh"
@@ -37,40 +49,12 @@ script
    label   "Stop PGCR"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_status.sh"
-   label   "PGCR - Show current viewport"
-
-script
    value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_wide.sh"
    label   "Baseline - WIDE cover 1.00x"
 
 script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock06.sh"
-   label   "Amap Wide - trim left 6%"
-
-script
    value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock08.sh"
-   label   "Amap Wide - trim left 8% - recommended"
-
-script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock10.sh"
-   label   "Amap Wide - trim left 10%"
-
-script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock12.sh"
-   label   "Amap Wide - trim left 12%"
-
-script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock08_up.sh"
-   label   "Amap 8% - pan source UP"
-
-script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_amap_dock08_down.sh"
-   label   "Amap 8% - pan source DOWN"
-
-script
-   value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_crop_reset.sh"
-   label   "Reset Crop - centered WIDE 1.00x"
+   label   "Amap Wide - trim left 8%"
 
 script
    value   sys 1 0x0100 "/eso/hmi/engdefs/scripts/mqb/pgcr_view_fit.sh"
